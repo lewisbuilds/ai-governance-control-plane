@@ -1,0 +1,71 @@
+# Human-readable policy rules. This is the main customer touchpoint.
+# Structure:
+# - require: list of conditions that MUST hold
+# - deny: list of deny conditions that immediately fail the gate if matched
+# - notes: free-form guidance shown in responses
+# - thresholds: reusable numeric thresholds
+#
+# Condition schema:
+# - field: dotted.path.to.value
+# - op: one of [gt,gte,lt,lte,eq,ne,in,not_in,contains]
+# - value: literal comparable with the field
+#
+# Example fields expected in /validate payload:
+# - context.safety_critical: bool
+# - metrics.accuracy: float (0..1)
+# - flags.contains_forbidden_data: bool
+# - risk.score: number
+#
+# Optional AIBOM fields are validated only if provided or if AIBOM_REQUIRED=true:
+#   aibom.digest: string (exact digest string used to sign)
+#   aibom.signature_b64: string (Ed25519 signature in base64 over the digest string)
+
+thresholds:
+  min_accuracy_general: 0.85
+  min_accuracy_safety_critical: 0.95
+  max_risk_score: 60
+
+require:
+  - field: flags.contains_forbidden_data
+    op: eq
+    value: false
+  - field: metrics.accuracy
+    op: gte
+    value_from: thresholds.min_accuracy_general
+  - when:
+      field: context.safety_critical
+      op: eq
+      value: true
+    field: metrics.accuracy
+    op: gte
+    value_from: thresholds.min_accuracy_safety_critical
+  - field: risk.score
+    op: lte
+    value_from: thresholds.max_risk_score
+
+deny:
+  - field: flags.contains_forbidden_data
+    op: eq
+    value: true
+    reason: "Forbidden data detected in training or evaluation artifacts."
+  - field: metrics.accuracy
+    op: lt
+    value_from: thresholds.min_accuracy_general
+    reason: "Accuracy below minimum threshold for general models."
+  - when:
+      field: context.safety_critical
+      op: eq
+      value: true
+    field: metrics.accuracy
+    op: lt
+    value_from: thresholds.min_accuracy_safety_critical
+    reason: "Safety-critical model accuracy below threshold."
+  - field: risk.score
+    op: gt
+    value_from: thresholds.max_risk_score
+    reason: "Risk score exceeds allowed maximum."
+
+notes:
+  - "Provide SHAP/explainability report path in evidence.shap_report_path where possible."
+  - "Include lineage hashes from mcp-lineage in evidence.lineage_hashes for traceability."
+  - "AIBOM verification is optional by default; enable via AIBOM_REQUIRED=true."

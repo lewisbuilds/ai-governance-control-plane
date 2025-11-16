@@ -1,0 +1,35 @@
+# VCS
+.git
+.gitignore
+
+# Python caches
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Virtual environments
+**/.venv/
+**/venv/
+
+# Node and build artifacts
+node_modules/
+dist/
+build/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and coverage
+*.log
+coverage/
+.nyc_output/
+
+# Env
+.env
+.env.*

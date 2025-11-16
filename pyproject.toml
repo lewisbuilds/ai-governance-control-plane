@@ -1,0 +1,36 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+lint.select = ["E","F","I","B","UP","SIM","C90"]
+lint.ignore = ["E203","E266","E501"]
+exclude = [".venv","wheelhouse","tests/__pycache__"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+[tool.poetry]
+name = "ai-governance-control-plane"
+version = "0.1.0"
+description = "Dev environment for tests and tooling at repo root"
+authors = ["lewisbuilds <noreply@example.com>"]
+readme = "README.md"
+packages = []
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+requests = "^2.32.3"
+PyYAML = "^6.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

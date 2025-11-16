@@ -1,0 +1,56 @@
+name: Postgres backup/restore test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly, Mondays 06:00 UTC
+
+jobs:
+  backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      POSTGRES_USER: mcp
+      POSTGRES_PASSWORD: ci_pass
+      POSTGRES_DB: mcpgov
+      DATABASE_URL: postgresql://mcp:ci_pass@localhost:5432/mcpgov
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start DB and run migrations
+        run: |
+          docker compose up -d db
+          # Wait for DB healthy
+          until [ "$(docker inspect -f {{.State.Health.Status}} mcp-db)" = "healthy" ]; do sleep 2; done
+          # Run migration one-off
+          docker compose run --rm db-migrate
+
+      - name: Seed sample data
+        run: |
+          docker exec mcp-db sh -lc "psql -U $POSTGRES_USER -d $POSTGRES_DB -c \"insert into audit_log (event_type, subject, decision, details, prev_hash, entry_hash) values ('test','control',true,'{}','GENESIS', md5(random()::text));\""
+
+      - name: Backup database (PowerShell)
+        shell: pwsh
+        run: |
+          ./scripts/pg-backup.ps1 -Output backup.dump
+          if (-not (Test-Path 'backup.dump')) { throw 'Backup file not created' }
+
+      - name: Restore to new database and verify
+        shell: bash
+        run: |
+          # Create target DB and restore
+          export TargetDb=restoretest
+          docker exec mcp-db sh -lc "psql -U $POSTGRES_USER -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$TargetDb'\" | grep -q 1 || createdb -U $POSTGRES_USER $TargetDb"
+          docker cp backup.dump mcp-db:/tmp/restore.dump
+          docker exec mcp-db sh -lc "PGPASSWORD=$POSTGRES_PASSWORD pg_restore -U $POSTGRES_USER -d $TargetDb -c -1 /tmp/restore.dump"
+          # Compare row counts in audit_log
+          SRC=$(docker exec mcp-db sh -lc "psql -U $POSTGRES_USER -d $POSTGRES_DB -tAc 'select count(*) from audit_log'")
+          DST=$(docker exec mcp-db sh -lc "psql -U $POSTGRES_USER -d $TargetDb -tAc 'select count(*) from audit_log'")
+          echo "Source audit_log rows: $SRC, Restored: $DST"
+          test "$SRC" = "$DST"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v

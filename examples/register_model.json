@@ -1,0 +1,15 @@
+{
+  "model_id": "resnet-50",
+  "version": "1.0.0",
+  "artifacts": [
+    "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  ],
+  "created_by": "mlops@example.com",
+  "metadata": {
+    "framework": "pytorch",
+    "dataset": "imagenet-1k",
+    "git_commit": "abcdef123456",
+    "tags": ["vision", "classifier"]
+  }
+}

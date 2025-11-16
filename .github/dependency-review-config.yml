@@ -1,0 +1,39 @@
+version: 1
+# Dependency Review policy for licenses and vulnerabilities
+# Docs: https://github.com/actions/dependency-review-action
+
+# Fail PRs when vulnerabilities at or above this severity are detected
+fail_on_severity: high
+
+# SPDX license IDs explicitly allowed (permissive and commonly accepted)
+allow_licenses:
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - MIT
+  - ISC
+  - MPL-2.0
+  - PSF-2.0
+  - Python-2.0
+  - Unlicense
+  - CC0-1.0
+
+# Licenses we do not accept in transitive or direct deps
+deny_licenses:
+  - AGPL-3.0-only
+  - AGPL-3.0-or-later
+  - GPL-3.0-only
+  - GPL-3.0-or-later
+  - GPL-2.0-only
+  - GPL-2.0-or-later
+  - LGPL-3.0-only
+  - LGPL-3.0-or-later
+  - LGPL-2.1-only
+  - LGPL-2.1-or-later
+  - SSPL-1.0
+  - BUSL-1.1
+  - Elastic-2.0
+
+# Optionally allow specific packages (by name@version) despite license
+# allow_dependencies:
+#   - some-lib@1.2.3

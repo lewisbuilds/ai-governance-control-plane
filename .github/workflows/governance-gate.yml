@@ -1,0 +1,55 @@
+name: governance-gate
+
+on:
+  pull_request:
+  push:
+    branches: [ main, bigrich ]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for gateway
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            curl -sf http://localhost:8080/mcp && exit 0
+            sleep 2
+          done
+          echo "Gateway did not become healthy in time" >&2
+          docker compose logs
+          exit 1
+
+      - name: List services
+        run: |
+          curl -s http://localhost:8080/mcp || true
+
+      - name: Policy validate example
+        shell: bash
+        run: |
+          cat > /tmp/policy-input.json <<'JSON'
+          {"payload":{"model_class":"vision","use_case":"general","risk":{"data_sensitivity":1,"model_complexity":1,"deployment_impact":1,"monitoring_maturity":3}}}
+          JSON
+          curl -s -X POST -H 'Content-Type: application/json' --data @/tmp/policy-input.json http://localhost:8080/mcp-policy/validate | tee /tmp/validate.json
+          grep -q '"allowed"' /tmp/validate.json
+
+      - name: Audit log example
+        shell: bash
+        run: |
+          cat > /tmp/audit.json <<'JSON'
+          {"event_type":"policy_decision","subject":"demo@1.0.0","decision":true,"details":{"note":"ci smoke"}}
+          JSON
+          curl -s -X POST -H 'Content-Type: application/json' --data @/tmp/audit.json http://localhost:8080/mcp-audit/log | tee /tmp/audit.json.out
+          grep -q '"entry_hash"' /tmp/audit.json.out
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose logs --tail=200

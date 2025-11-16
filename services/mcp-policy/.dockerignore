@@ -1,0 +1,25 @@
+# Ignore local Poetry metadata (we build from requirements.txt)
+pyproject.toml
+poetry.lock
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+
+# Tests & docs (if any)
+tests/
+docs/
+
+# Editor
+.vscode/
+.idea/
+
+# Env
+.env

@@ -1,0 +1,199 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mcp-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mcp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-mcpgov}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mcp} -d ${POSTGRES_DB:-mcpgov}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - pg:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    read_only: false
+    restart: unless-stopped
+
+  db-migrate:
+    image: python:3.11-slim
+    working_dir: /app
+    environment:
+      DATABASE_URL: ${DATABASE_URL?DATABASE_URL is required}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app:ro
+      - ./wheelhouse:/wheelhouse:ro
+    # Install psycopg from local wheelhouse (offline-friendly), then run the migrator
+    command: ["sh", "-lc", "set -e; \
+      python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg \
+      || python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg-binary \
+      || python -m pip install --no-input --no-cache-dir psycopg; \
+      python scripts/migrate.py"]
+    restart: "no"
+
+  mcp-lineage:
+    build:
+      context: .
+      dockerfile: ./services/mcp-lineage/Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    image: mcp-lineage:local
+    environment:
+      DATABASE_URL: ${DATABASE_URL?DATABASE_URL is required}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request,json; sys.exit(0 if json.loads(urllib.request.urlopen('http://localhost:8000/healthz',timeout=2).read().decode()).get('ok') else 1)\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app/.cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    restart: unless-stopped
+
+  mcp-audit:
+    build:
+      context: .
+      dockerfile: ./services/mcp-audit/Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    image: mcp-audit:local
+    environment:
+      DATABASE_URL: ${DATABASE_URL?DATABASE_URL is required}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request,json; sys.exit(0 if json.loads(urllib.request.urlopen('http://localhost:8000/healthz',timeout=2).read().decode()).get('ok') else 1)\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app/.cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    restart: unless-stopped
+
+  mcp-policy:
+    build:
+      context: .
+      dockerfile: ./services/mcp-policy/Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    image: mcp-policy:local
+    environment:
+      AIBOM_PUBLIC_KEY_PATH: ${AIBOM_PUBLIC_KEY_PATH:-/app/keys/aibom_public_key.pem}
+      AIBOM_REQUIRED: ${AIBOM_REQUIRED:-false}
+      GATE_SLA_MS: ${GATE_SLA_MS:-1500}
+      POLICIES_DIR: /app/policies
+    volumes:
+      - ./policies:/app/policies:ro
+      - ./infra/keys:/app/keys:ro
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request,json; sys.exit(0 if json.loads(urllib.request.urlopen('http://localhost:8000/healthz',timeout=2).read().decode()).get('ok') else 1)\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app/.cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    restart: unless-stopped
+
+  mcp-gateway:
+    build:
+      context: .
+      dockerfile: ./services/mcp-gateway/Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    image: mcp-gateway:local
+    environment:
+      MCP_DIRECTORY: >
+        {"mcp-lineage":"http://mcp-lineage:8000",
+         "mcp-policy":"http://mcp-policy:8000",
+         "mcp-audit":"http://mcp-audit:8000"}
+    ports:
+      - "8080:8000"
+    depends_on:
+      mcp-lineage:
+        condition: service_healthy
+      mcp-policy:
+        condition: service_healthy
+      mcp-audit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request,json; sys.exit(0 if 'services' in json.loads(urllib.request.urlopen('http://localhost:8000/mcp',timeout=2).read().decode()) else 1)\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app/.cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    restart: unless-stopped
+
+volumes:
+  pg:

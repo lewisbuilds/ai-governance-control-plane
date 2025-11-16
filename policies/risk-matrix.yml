@@ -1,0 +1,11 @@
+# Simple additive risk model with weights and thresholds
+weights:
+  data_sensitivity: 3      # 0-5
+  model_complexity: 2      # 0-5
+  deployment_impact: 4     # 0-5
+  monitoring_maturity: -2  # negative weight reduces risk when maturity increases
+
+thresholds:
+  low: 0
+  medium: 40
+  high: 70
