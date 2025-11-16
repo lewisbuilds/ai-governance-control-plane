@@ -1,0 +1,90 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pgbackrest-stanza-create
+  namespace: ai-governance
+  labels:
+    app: pgbackrest
+    job-type: stanza-init
+    app.kubernetes.io/part-of: ai-governance
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: pgbackrest
+        job-type: stanza-init
+        app.kubernetes.io/part-of: ai-governance
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: pgbackrest-init
+        image: pgbackrest/pgbackrest:latest
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -e
+            echo "Initializing pgBackRest stanza..."
+            
+            # Wait for PostgreSQL to be ready
+            until pg_isready -h postgres-service -p 5432 -U postgres; do
+              echo "Waiting for PostgreSQL to be ready..."
+              sleep 5
+            done
+            
+            echo "PostgreSQL is ready. Creating stanza..."
+            
+            # Create the stanza
+            pgbackrest --stanza=mcpgov stanza-create
+            
+            echo "Stanza created successfully. Checking stanza..."
+            pgbackrest --stanza=mcpgov check
+            
+            echo "Stanza initialization complete!"
+            pgbackrest --stanza=mcpgov info
+        env:
+          - name: PGBACKREST_STANZA
+            value: mcpgov
+          - name: PGBACKREST_REPO1_PATH
+            value: /var/lib/pgbackrest
+          - name: PGBACKREST_LOG_PATH
+            value: /var/log/pgbackrest
+          - name: PGBACKREST_PG1_PATH
+            value: /var/lib/postgresql/data
+          - name: PGBACKREST_PG1_HOST
+            value: postgres-service
+          - name: PGBACKREST_PG1_PORT
+            value: "5432"
+          - name: PGBACKREST_PG1_USER
+            value: postgres
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: password
+        volumeMounts:
+          - name: pgbackrest-config
+            mountPath: /etc/pgbackrest
+            readOnly: true
+          - name: pgbackrest-repo
+            mountPath: /var/lib/pgbackrest
+          - name: pgbackrest-log
+            mountPath: /var/log/pgbackrest
+      volumes:
+        - name: pgbackrest-config
+          configMap:
+            name: pgbackrest-config
+            items:
+              - key: pgbackrest.conf
+                path: pgbackrest.conf
+        - name: pgbackrest-repo
+          persistentVolumeClaim:
+            claimName: pgbackrest-repo
+        - name: pgbackrest-log
+          emptyDir: {}

@@ -178,7 +178,9 @@ Notes
 - On an empty DB, the runner executes `infra/init.sql` and records the baseline.
 - On an existing DB (e.g., when Postgres bootstraps from `init.sql`), the runner records the baseline without reapplying it.
 
-## Backup and restore (tested regularly)
+## Backup and restore
+
+### Simple backup with pg_dump (legacy)
 
 Use the provided PowerShell scripts against the running `mcp-db` container:
 
@@ -197,6 +199,46 @@ $env:POSTGRES_DB = "mcpgov"
 
 CI coverage
 - Workflow `.github/workflows/pg-backup-restore-test.yml` runs weekly and on-demand, performing a dump and restore round-trip to validate procedures.
+
+### Enterprise backup with pgBackRest (recommended)
+
+For production deployments, use pgBackRest for enterprise-grade backup and restore capabilities:
+
+- **Full documentation**: See `docs/PGBACKREST.md` for comprehensive setup and usage guide
+- **Kubernetes deployment**: See `infra/k8s/pgbackrest/README.md` for K8s manifests with CronJobs
+- **Docker Compose**: Use `docker-compose.pgbackrest.yml` for local development
+- **VM deployment**: Install pgBackRest directly and use cron/systemd timers
+
+Quick start (Docker Compose):
+```powershell
+# Start services with pgBackRest
+docker compose -f docker-compose.yml -f docker-compose.pgbackrest.yml up -d
+
+# Initialize the stanza (one-time)
+./scripts/pgbackrest-init.ps1
+
+# Perform a full backup
+./scripts/pgbackrest-backup.ps1 -BackupType full
+
+# Validate restore capability
+./scripts/pgbackrest-restore-validation.ps1
+```
+
+Quick start (Kubernetes):
+```bash
+# Deploy all pgBackRest resources
+kubectl apply -f infra/k8s/pgbackrest/
+
+# Check status
+kubectl get cronjobs -n ai-governance -l app=pgbackrest
+```
+
+Features:
+- Automated scheduled backups (full, differential)
+- Point-in-Time Recovery (PITR)
+- WAL archiving with retention policies
+- Automated restore validation
+- S3/cloud storage support
 
 ## Build and deployment
 

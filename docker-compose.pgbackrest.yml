@@ -1,0 +1,43 @@
+services:
+  # PostgreSQL with pgBackRest-compatible configuration
+  db:
+    volumes:
+      # Add pgBackRest configuration
+      - ./infra/pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+      # Add custom PostgreSQL configuration with archive settings
+      - ./infra/pgbackrest/postgresql-archive.conf:/etc/postgresql/conf.d/archive.conf:ro
+    # Note: For full pgBackRest integration, PostgreSQL needs pgbackrest package installed
+    # Consider using a custom image based on postgres:16 with pgbackrest added
+
+  # pgBackRest service for scheduled backups
+  pgbackrest:
+    image: pgbackrest/pgbackrest:latest
+    container_name: mcp-pgbackrest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGBACKREST_STANZA: mcpgov
+      PGBACKREST_REPO1_PATH: /var/lib/pgbackrest
+      PGBACKREST_LOG_PATH: /var/log/pgbackrest
+      PGBACKREST_PG1_PATH: /var/lib/postgresql/data
+      PGBACKREST_PG1_HOST: db
+      PGBACKREST_PG1_PORT: 5432
+      PGBACKREST_PG1_USER: ${POSTGRES_USER:-mcp}
+      PGPASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD is required}
+    volumes:
+      - ./infra/pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+      - pgbackrest-repo:/var/lib/pgbackrest
+      - pg:/var/lib/postgresql/data:ro
+    # Keep container running for scheduled operations
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgbackrest --stanza=mcpgov info || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pgbackrest-repo:

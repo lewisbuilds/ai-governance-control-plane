@@ -47,3 +47,6 @@ wheelhouse/
 # Keep infra keys tracked (public keys only); do not ignore this folder
 !infra/keys/
 collections/
+
+# pgBackRest - exclude actual secrets, keep examples
+infra/k8s/pgbackrest/postgres-secret.yaml

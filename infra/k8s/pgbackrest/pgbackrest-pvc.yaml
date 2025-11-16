@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgbackrest-repo
+  namespace: ai-governance
+  labels:
+    app: pgbackrest
+    app.kubernetes.io/part-of: ai-governance
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  # Specify storageClassName if needed for your cluster
+  # storageClassName: standard

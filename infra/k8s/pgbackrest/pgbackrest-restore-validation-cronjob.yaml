@@ -1,0 +1,89 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pgbackrest-restore-validation
+  namespace: ai-governance
+  labels:
+    app: pgbackrest
+    job-type: restore-validation
+    app.kubernetes.io/part-of: ai-governance
+spec:
+  # Run restore validation weekly on Sundays at 3 AM UTC
+  schedule: "0 3 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: pgbackrest
+            job-type: restore-validation
+            app.kubernetes.io/part-of: ai-governance
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+          containers:
+          - name: pgbackrest-restore-test
+            image: pgbackrest/pgbackrest:latest
+            command:
+              - /bin/bash
+              - /scripts/restore-validation.sh
+            env:
+              - name: PGBACKREST_STANZA
+                value: mcpgov
+              - name: PGBACKREST_REPO1_PATH
+                value: /var/lib/pgbackrest
+              - name: PGBACKREST_LOG_PATH
+                value: /var/log/pgbackrest
+              - name: PGBACKREST_PG1_HOST
+                value: postgres-service
+              - name: PGBACKREST_PG1_PORT
+                value: "5432"
+              - name: PGBACKREST_PG1_USER
+                value: postgres
+              - name: PGPASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-credentials
+                    key: password
+            volumeMounts:
+              - name: pgbackrest-config
+                mountPath: /etc/pgbackrest
+                readOnly: true
+              - name: restore-scripts
+                mountPath: /scripts
+                readOnly: true
+              - name: pgbackrest-repo
+                mountPath: /var/lib/pgbackrest
+              - name: pgbackrest-log
+                mountPath: /var/log/pgbackrest
+              - name: restore-temp
+                mountPath: /var/lib/postgresql/restore-test
+          volumes:
+            - name: pgbackrest-config
+              configMap:
+                name: pgbackrest-config
+                items:
+                  - key: pgbackrest.conf
+                    path: pgbackrest.conf
+            - name: restore-scripts
+              configMap:
+                name: pgbackrest-config
+                defaultMode: 0755
+                items:
+                  - key: restore-validation.sh
+                    path: restore-validation.sh
+            - name: pgbackrest-repo
+              persistentVolumeClaim:
+                claimName: pgbackrest-repo
+            - name: pgbackrest-log
+              emptyDir: {}
+            - name: restore-temp
+              emptyDir:
+                sizeLimit: 5Gi

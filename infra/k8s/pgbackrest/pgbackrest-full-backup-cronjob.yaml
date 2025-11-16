@@ -1,0 +1,82 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pgbackrest-full-backup
+  namespace: ai-governance
+  labels:
+    app: pgbackrest
+    backup-type: full
+    app.kubernetes.io/part-of: ai-governance
+spec:
+  # Run full backup daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: pgbackrest
+            backup-type: full
+            app.kubernetes.io/part-of: ai-governance
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+          containers:
+          - name: pgbackrest
+            image: pgbackrest/pgbackrest:latest
+            command:
+              - /bin/bash
+              - -c
+              - |
+                set -e
+                echo "Starting full backup at $(date)"
+                pgbackrest --stanza=mcpgov --type=full backup
+                echo "Full backup completed at $(date)"
+                pgbackrest --stanza=mcpgov info
+            env:
+              - name: PGBACKREST_STANZA
+                value: mcpgov
+              - name: PGBACKREST_REPO1_PATH
+                value: /var/lib/pgbackrest
+              - name: PGBACKREST_LOG_PATH
+                value: /var/log/pgbackrest
+              - name: PGBACKREST_PG1_PATH
+                value: /var/lib/postgresql/data
+              - name: PGBACKREST_PG1_HOST
+                value: postgres-service
+              - name: PGBACKREST_PG1_PORT
+                value: "5432"
+              - name: PGBACKREST_PG1_USER
+                value: postgres
+              - name: PGPASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-credentials
+                    key: password
+            volumeMounts:
+              - name: pgbackrest-config
+                mountPath: /etc/pgbackrest
+                readOnly: true
+              - name: pgbackrest-repo
+                mountPath: /var/lib/pgbackrest
+              - name: pgbackrest-log
+                mountPath: /var/log/pgbackrest
+          volumes:
+            - name: pgbackrest-config
+              configMap:
+                name: pgbackrest-config
+                items:
+                  - key: pgbackrest.conf
+                    path: pgbackrest.conf
+            - name: pgbackrest-repo
+              persistentVolumeClaim:
+                claimName: pgbackrest-repo
+            - name: pgbackrest-log
+              emptyDir: {}
