@@ -30,9 +30,9 @@ services:
       - ./wheelhouse:/wheelhouse:ro
     # Install psycopg from local wheelhouse (offline-friendly), then run the migrator
     command: ["sh", "-lc", "set -e; \
-      python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg \
-      || python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg-binary \
-      || python -m pip install --no-input --no-cache-dir psycopg; \
+      python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg[binary] \
+      || python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg_binary \
+      || python -m pip install --no-input --no-cache-dir psycopg[binary]; \
       python scripts/migrate.py"]
     restart: "no"
 
