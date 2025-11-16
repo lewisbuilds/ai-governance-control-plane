@@ -1,0 +1,10 @@
+[Unit]
+Description=Run pgBackRest differential backup every 6 hours
+
+[Timer]
+OnCalendar=00/6:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

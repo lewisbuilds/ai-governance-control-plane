@@ -1,0 +1,27 @@
+# pgBackRest backup schedule for VM/cron deployment
+# 
+# Copy this to your crontab:
+#   sudo crontab -u postgres -e
+# 
+# Or install as a system cron file:
+#   sudo cp cron-pgbackrest /etc/cron.d/pgbackrest
+#   sudo chmod 644 /etc/cron.d/pgbackrest
+#
+# Note: Adjust paths if pgbackrest is installed in a non-standard location
+# Use 'which pgbackrest' to find the correct path
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+MAILTO=your-email@example.com
+
+# Full backup daily at 2 AM
+0 2 * * * postgres /usr/bin/pgbackrest --stanza=mcpgov --type=full backup
+
+# Differential backup every 6 hours (at 0:00, 6:00, 12:00, 18:00)
+0 */6 * * * postgres /usr/bin/pgbackrest --stanza=mcpgov --type=diff backup
+
+# Restore validation weekly on Sundays at 3 AM
+0 3 * * 0 postgres /usr/local/bin/pgbackrest-restore-validation.sh
+
+# Check backup status daily at 8 AM (sends output via email if MAILTO is set)
+0 8 * * * postgres /usr/bin/pgbackrest --stanza=mcpgov info
