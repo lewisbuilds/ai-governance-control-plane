@@ -3,15 +3,15 @@ version: 1
 # Docs: https://github.com/actions/dependency-review-action
 
 # Fail PRs when vulnerabilities at or above this severity are detected
-fail_on_severity: high
+fail-on-severity: high
 
 ## License policy
-# NOTE: dependency-review-action does not allow specifying both allow_licenses
-# and deny_licenses at the same time. We keep a deny-list here to block
+# NOTE: dependency-review-action does not allow specifying both allow-licenses
+# and deny-licenses at the same time. We keep a deny-list here to block
 # strong copyleft and non-permissive licenses that pose redistribution issues.
 
 # Licenses we do not accept in transitive or direct deps
-deny_licenses:
+deny-licenses:
   - AGPL-3.0-only
   - AGPL-3.0-or-later
   - GPL-3.0-only
@@ -27,5 +27,5 @@ deny_licenses:
   - Elastic-2.0
 
 # Optionally allow specific packages (by name@version) despite license
-# allow_dependencies:
-#   - some-lib@1.2.3
+# allow-dependencies-licenses:
+#   - pkg:npm/some-lib@1.2.3
