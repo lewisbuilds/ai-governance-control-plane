@@ -9,6 +9,11 @@ jobs:
   smoke-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      POSTGRES_USER: mcp
+      POSTGRES_PASSWORD: ci-gate-pass
+      POSTGRES_DB: mcpgov
+      DATABASE_URL: postgresql://mcp:ci-gate-pass@db:5432/mcpgov
     steps:
       - name: Checkout
         uses: actions/checkout@v4
