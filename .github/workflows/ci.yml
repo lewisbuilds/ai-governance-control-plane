@@ -220,6 +220,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+      - name: Set up Python (for wheelhouse)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Populate wheelhouse
+        run: |
+          python -m pip install --upgrade pip
+          python scripts/download-wheels.py
       - name: Docker info
         run: |
           docker --version
