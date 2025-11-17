@@ -5,18 +5,10 @@ version: 1
 # Fail PRs when vulnerabilities at or above this severity are detected
 fail_on_severity: high
 
-# SPDX license IDs explicitly allowed (permissive and commonly accepted)
-allow_licenses:
-  - Apache-2.0
-  - BSD-2-Clause
-  - BSD-3-Clause
-  - MIT
-  - ISC
-  - MPL-2.0
-  - PSF-2.0
-  - Python-2.0
-  - Unlicense
-  - CC0-1.0
+## License policy
+# NOTE: dependency-review-action does not allow specifying both allow_licenses
+# and deny_licenses at the same time. We keep a deny-list here to block
+# strong copyleft and non-permissive licenses that pose redistribution issues.
 
 # Licenses we do not accept in transitive or direct deps
 deny_licenses:
