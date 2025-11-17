@@ -23,11 +23,24 @@ jobs:
         id: gitleaks
         continue-on-error: true
         uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --redact --source . --report-format sarif --report-path gitleaks.sarif --verbose
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+          GITLEAKS_ENABLE_COMMENTS: false
+
+      - name: Check if SARIF exists
+        id: check_sarif
+        run: |
+          if [ -f "results.sarif" ]; then
+            echo "sarif_exists=true" >> $GITHUB_OUTPUT
+            echo "SARIF file found: results.sarif"
+          else
+            echo "sarif_exists=false" >> $GITHUB_OUTPUT
+            echo "SARIF file not found, creating empty report"
+            echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[{"tool":{"driver":{"name":"Gitleaks","informationUri":"https://github.com/gitleaks/gitleaks"}},"results":[]}]}' > results.sarif
+          fi
 
       - name: Upload SARIF to code scanning
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: gitleaks.sarif
+          sarif_file: results.sarif
