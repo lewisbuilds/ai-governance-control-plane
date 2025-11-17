@@ -118,8 +118,8 @@ jobs:
           file: services/mcp-gateway/Dockerfile
           tags: gateway:test
           load: true
-          provenance: true
-          sbom: true
+          provenance: false
+          sbom: false
       - name: Build mcp-policy
         id: build_policy
         uses: docker/build-push-action@v6
@@ -128,8 +128,8 @@ jobs:
           file: services/mcp-policy/Dockerfile
           tags: policy:test
           load: true
-          provenance: true
-          sbom: true
+          provenance: false
+          sbom: false
       - name: Build mcp-audit
         id: build_audit
         uses: docker/build-push-action@v6
@@ -138,8 +138,8 @@ jobs:
           file: services/mcp-audit/Dockerfile
           tags: audit:test
           load: true
-          provenance: true
-          sbom: true
+          provenance: false
+          sbom: false
       - name: Build mcp-lineage
         id: build_lineage
         uses: docker/build-push-action@v6
@@ -148,8 +148,8 @@ jobs:
           file: services/mcp-lineage/Dockerfile
           tags: lineage:test
           load: true
-          provenance: true
-          sbom: true
+          provenance: false
+          sbom: false
 
   trivy:
     name: Trivy scan
