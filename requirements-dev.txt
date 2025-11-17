@@ -5,6 +5,7 @@ PyYAML==6.0.2
 ruff==0.6.8
 mypy==1.11.2
 types-requests==2.32.0.20241016
+types-cryptography==3.3.23.2
 pre-commit==4.0.1
 black==24.10.0
 isort==5.13.2
