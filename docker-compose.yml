@@ -29,11 +29,20 @@ services:
       - .:/app:ro
       - ./wheelhouse:/wheelhouse:ro
     # Install psycopg from local wheelhouse (offline-friendly), then run the migrator
-    command: ["sh", "-lc", "set -e; \
-      python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg \
-      || python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg-binary \
-      || python -m pip install --no-input --no-cache-dir psycopg; \
-      python scripts/migrate.py"]
+    command: 
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Installing psycopg..."
+        python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg 2>/dev/null || \
+        python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse psycopg-binary 2>/dev/null || \
+        python -m pip install --no-input --no-cache-dir psycopg || {
+          echo "ERROR: Failed to install psycopg from wheelhouse or PyPI"
+          exit 1
+        }
+        echo "Running migrations..."
+        python scripts/migrate.py
     restart: "no"
 
   mcp-lineage:
