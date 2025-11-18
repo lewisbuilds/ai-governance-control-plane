@@ -34,7 +34,7 @@ services:
       - sh
       - -c
       - |
-        set -ex
+        set -e
         echo "=== Starting db-migrate ==="
         echo "DATABASE_URL: ${DATABASE_URL}"
         echo "Installing psycopg[binary]..."
@@ -45,10 +45,7 @@ services:
         }
         echo "psycopg[binary] installed successfully"
         echo "Running migrations..."
-        python scripts/migrate.py || {
-          echo "ERROR: Migration script failed with exit code $?"
-          exit 1
-        }
+        python scripts/migrate.py
         echo "=== Migration complete ==="
     restart: "no"
 
