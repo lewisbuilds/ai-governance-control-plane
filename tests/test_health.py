@@ -84,7 +84,7 @@ def test_audit_hash_chaining(gateway_url: str) -> None:
     entry1 = resp1.json()
     hash1 = entry1.get("entry_hash")
     prev_hash_1 = entry1.get("prev_hash")
-    
+
     # Verify structure (prev_hash may be GENESIS or a previous entry's hash)
     assert prev_hash_1 is not None, "First entry should have prev_hash"
 
@@ -101,7 +101,7 @@ def test_audit_hash_chaining(gateway_url: str) -> None:
     )
     assert resp2.status_code == 200
     entry2 = resp2.json()
-    
+
     # Verify hash chain: entry2.prev_hash must equal entry1.entry_hash
     assert entry2.get("prev_hash") == hash1, "Second entry's prev_hash should link to first entry"
     assert entry2.get("entry_hash") != hash1, "Entry hashes must be unique"
