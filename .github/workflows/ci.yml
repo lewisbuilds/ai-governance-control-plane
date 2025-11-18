@@ -239,30 +239,31 @@ jobs:
       - name: Wait for db-migrate to complete
         run: |
           echo "Waiting for db-migrate service to complete..."
-          # Wait for service to appear and complete (up to 2 minutes)
+          # Wait for completion message in logs (up to 2 minutes)
           for i in {1..60}; do
-            # Check if service exists in ps output
-            if ! docker compose ps db-migrate --format json 2>/dev/null | jq -e '.[0]' > /dev/null; then
-              echo "Attempt $i: db-migrate service not found yet, waiting..."
-              sleep 2
-              continue
-            fi
+            echo "Attempt $i: Checking db-migrate logs..."
             
-            status=$(docker compose ps db-migrate --format json | jq -r '.[0].State')
-            exit_code=$(docker compose ps db-migrate --format json | jq -r '.[0].ExitCode')
-            echo "Attempt $i: status=$status, exit_code=$exit_code"
-            
-            if [ "$status" = "exited" ]; then
-              if [ "$exit_code" = "0" ]; then
-                echo "db-migrate completed successfully"
-                docker compose logs db-migrate | tail -10
-                exit 0
-              else
-                echo "db-migrate failed with exit code $exit_code"
-                docker compose logs db-migrate
+            # Check if completion message appears in logs
+            if docker compose logs db-migrate 2>/dev/null | grep -q "=== Migration complete ==="; then
+              echo "db-migrate completed successfully (found completion message)"
+              docker compose logs db-migrate | tail -15
+              
+              # Verify exit code
+              exit_code=$(docker compose ps db-migrate --format json 2>/dev/null | jq -r '.[0].ExitCode // "0"')
+              if [ "$exit_code" != "0" ] && [ "$exit_code" != "null" ]; then
+                echo "WARNING: db-migrate exit code was $exit_code"
                 exit 1
               fi
+              exit 0
             fi
+            
+            # Check for error patterns
+            if docker compose logs db-migrate 2>/dev/null | grep -q "ERROR:"; then
+              echo "db-migrate encountered an error"
+              docker compose logs db-migrate
+              exit 1
+            fi
+            
             sleep 2
           done
           echo "db-migrate did not complete in time (waited 2 minutes)"
