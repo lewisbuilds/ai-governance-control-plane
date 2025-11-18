@@ -46,7 +46,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check --output-format=github .
       - name: Black (check only)
-        run: black --check .
+        run: black --check . --line-length 100 --target-version py311
       - name: Pylint
         run: pylint services
       - name: Vulture (dead code)
