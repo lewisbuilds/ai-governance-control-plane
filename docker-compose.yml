@@ -189,7 +189,8 @@ services:
       test: ["CMD-SHELL", "python -c \"import sys,urllib.request,json; sys.exit(0 if 'services' in json.loads(urllib.request.urlopen('http://localhost:8000/mcp',timeout=2).read().decode()) else 1)\""]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 30
+      start_period: 10s
     read_only: true
     tmpfs:
       - /tmp
