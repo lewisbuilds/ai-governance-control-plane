@@ -175,10 +175,7 @@ services:
         NO_PROXY: ${NO_PROXY:-}
     image: mcp-gateway:local
     environment:
-      MCP_DIRECTORY: >
-        {"mcp-lineage":"http://mcp-lineage:8000",
-         "mcp-policy":"http://mcp-policy:8000",
-         "mcp-audit":"http://mcp-audit:8000"}
+      MCP_DIRECTORY: '{"mcp-lineage":"http://mcp-lineage:8000","mcp-policy":"http://mcp-policy:8000","mcp-audit":"http://mcp-audit:8000"}'
     ports:
       - "8080:8000"
     depends_on:
