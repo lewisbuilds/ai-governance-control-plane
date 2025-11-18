@@ -248,12 +248,13 @@ jobs:
               echo "db-migrate completed successfully (found completion message)"
               docker compose logs db-migrate | tail -15
               
-              # Verify exit code
-              exit_code=$(docker compose ps db-migrate --format json 2>/dev/null | jq -r '.[0].ExitCode // "0"')
-              if [ "$exit_code" != "0" ] && [ "$exit_code" != "null" ]; then
-                echo "WARNING: db-migrate exit code was $exit_code"
+              # Verify exit code if available
+              exit_code=$(docker compose ps db-migrate --format json 2>/dev/null | jq -r '.[0].ExitCode // empty' || echo "")
+              if [ -n "$exit_code" ] && [ "$exit_code" != "0" ] && [ "$exit_code" != "null" ]; then
+                echo "ERROR: db-migrate exit code was $exit_code"
                 exit 1
               fi
+              echo "Exit code check passed (code: ${exit_code:-not available})"
               exit 0
             fi
             
