@@ -22,6 +22,30 @@ jobs:
         run: |
           docker compose up -d --build
 
+      - name: Wait for db-migrate to complete
+        shell: bash
+        run: |
+          echo "Waiting for db-migrate service to complete..."
+          for i in {1..30}; do
+            status=$(docker compose ps db-migrate --format json | jq -r '.[0].State' 2>/dev/null || echo "unknown")
+            echo "db-migrate status: $status"
+            if [ "$status" = "exited" ]; then
+              exit_code=$(docker compose ps db-migrate --format json | jq -r '.[0].ExitCode' 2>/dev/null || echo "1")
+              if [ "$exit_code" = "0" ]; then
+                echo "db-migrate completed successfully"
+                exit 0
+              else
+                echo "db-migrate failed with exit code $exit_code"
+                docker compose logs db-migrate
+                exit 1
+              fi
+            fi
+            sleep 2
+          done
+          echo "db-migrate did not complete in time"
+          docker compose logs db-migrate
+          exit 1
+
       - name: Wait for gateway
         shell: bash
         run: |
