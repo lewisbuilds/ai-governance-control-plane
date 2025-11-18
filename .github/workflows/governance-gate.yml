@@ -18,45 +18,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start stack
+      - name: Build all images
         run: |
-          docker compose up -d --build
+          docker compose build
 
-      - name: Wait for db-migrate to complete
+      - name: Start database and run migrations
         shell: bash
         run: |
-          echo "Waiting for db-migrate service to complete..."
-          # Wait for completion message in logs (up to 2 minutes)
-          for i in {1..60}; do
-            echo "Attempt $i: Checking db-migrate logs..."
-            
-            # Check if completion message appears in logs
-            if docker compose logs db-migrate 2>/dev/null | grep -q "=== Migration complete ==="; then
-              echo "db-migrate completed successfully (found completion message)"
-              docker compose logs db-migrate | tail -15
-              
-              # Verify exit code if available
-              exit_code=$(docker compose ps db-migrate --format json 2>/dev/null | jq -r '.[0].ExitCode // empty' || echo "")
-              if [ -n "$exit_code" ] && [ "$exit_code" != "0" ] && [ "$exit_code" != "null" ]; then
-                echo "ERROR: db-migrate exit code was $exit_code"
-                exit 1
-              fi
-              echo "Exit code check passed (code: ${exit_code:-not available})"
-              exit 0
-            fi
-            
-            # Check for error patterns
-            if docker compose logs db-migrate 2>/dev/null | grep -q "ERROR:"; then
-              echo "db-migrate encountered an error"
-              docker compose logs db-migrate
-              exit 1
-            fi
-            
-            sleep 2
-          done
-          echo "db-migrate did not complete in time (waited 2 minutes)"
-          docker compose logs db-migrate
-          exit 1
+          echo "Starting database and migration services..."
+          docker compose up -d db
+          docker compose up db-migrate
+          
+          echo "Verifying migration completion..."
+          if docker compose logs db-migrate 2>/dev/null | grep -q "=== Migration complete ==="; then
+            echo "✓ Migrations completed successfully"
+            docker compose logs db-migrate | tail -10
+          else
+            echo "✗ Migration completion marker not found"
+            docker compose logs db-migrate
+            exit 1
+          fi
+
+      - name: Start application services
+        run: |
+          docker compose up -d mcp-policy mcp-lineage mcp-audit mcp-gateway
 
       - name: Wait for gateway
         shell: bash
