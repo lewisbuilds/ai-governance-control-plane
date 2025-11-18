@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from audit_schema import AuditEvent, AuditIn
 from fastapi import FastAPI, HTTPException, Query, Response
+from psycopg import types as psycopg_types
 from psycopg_pool import ConnectionPool
 
 try:
@@ -115,7 +116,7 @@ def log_event(evt: AuditIn):
                     evt.event_type,
                     evt.subject,
                     evt.decision,
-                    evt.details,
+                    psycopg_types.json.Json(evt.details),
                     prev_hash,
                     entry_hash,
                 ),
@@ -132,6 +133,7 @@ def log_event(evt: AuditIn):
                 "created_at": r[7].isoformat(),
             }
     except Exception as e:
+        _logger.error("log_event failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="audit_failed") from e
 
 
