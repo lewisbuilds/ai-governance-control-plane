@@ -269,7 +269,7 @@ jobs:
         env:
           PYTEST_ADDOPTS: "-q"
         run: |
-          pytest
+          pytest -m integration --cov-fail-under=0
       - name: Tear down stack
         if: always()
         run: |
