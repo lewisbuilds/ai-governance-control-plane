@@ -43,6 +43,7 @@ Thumbs.db
 
 # Ignore local wheel cache; CI populates it when needed
 wheelhouse/
+collections/
 
 # Keep infra keys tracked (public keys only); do not ignore this folder
 !infra/keys/
