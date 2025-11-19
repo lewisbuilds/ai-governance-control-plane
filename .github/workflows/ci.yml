@@ -171,7 +171,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: services/${{ matrix.image }}/Dockerfile
+          file: services/mcp-${{ matrix.image }}/Dockerfile
           tags: ${{ matrix.image }}:test
           load: true
           provenance: false
