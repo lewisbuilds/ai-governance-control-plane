@@ -16,6 +16,15 @@ RAW_DIRECTORY = os.environ.get("MCP_DIRECTORY", "{}")
 try:
     MCP_DIRECTORY: dict[str, str] = json.loads(RAW_DIRECTORY)
 except json.JSONDecodeError:
+
+# Map each service to a list of allowed path patterns (as regex).
+# e.g., {"example": [r"^/user_info/\w+$"], ...}
+ALLOWED_PATHS: dict[str, list[str]] = {
+    # Replace example with actual service keys and the paths you wish to allow
+    # "example_service": [r"^/user_info/\w+$", r"^/status$"],
+    # "other_service": [r"^/data/\d+$"],
+}
+import re
     MCP_DIRECTORY = {}
 
 # Strictly allow only http URLs to known internal services
@@ -107,6 +116,11 @@ async def _proxy(service: str, path: str, req: Request):
     if not base:
         raise HTTPException(status_code=404, detail="service_not_found")
     spath = _sanitize_path(path)
+
+    # SSRF Mitigation: check path against allowed patterns for service
+    patterns = ALLOWED_PATHS.get(service)
+    if patterns is None or not any(re.match(p, spath) for p in patterns):
+        raise HTTPException(status_code=403, detail="unauthorized_path")
 
     # Build target URL and forward
     url = base.rstrip("/") + spath
