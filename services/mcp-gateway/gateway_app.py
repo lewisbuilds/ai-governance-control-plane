@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+import re
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -96,6 +97,14 @@ def _sanitize_path(path: str) -> str:
     # Disallow path traversal or scheme injection
     if ".." in path or path.startswith("http") or path.startswith("//"):
         raise HTTPException(status_code=400, detail="invalid_path")
+    # Only allow paths with safe characters: alphanumerics, -, _, / (single groups only), dots in names are allowed but not ".."
+    # Disallow double slashes, query strings, fragment markers, or suspicious patterns.
+    if "?" in path or "#" in path or "//" in path:
+        raise HTTPException(status_code=400, detail="invalid_path_format")
+    # Only allow letters, numbers, dashes, underscores, slashes, and dots in single segments
+    # Example allowed: /api/v1/info-data or /foo_bar/baz123
+    if not re.fullmatch(r"/?([a-zA-Z0-9_\-\.]+(/([a-zA-Z0-9_\-\.]+)*)*)?", path):
+        raise HTTPException(status_code=400, detail="untrusted_path_chars")
     # ensure single leading slash
     if not path.startswith("/"):
         path = "/" + path
