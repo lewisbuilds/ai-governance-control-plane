@@ -83,8 +83,6 @@ def healthz():
 
 
 def canonical_json(value) -> str:
-    import json
-
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
@@ -190,8 +188,6 @@ def export(fmt: str = Query(default="json", pattern="^(json|csv)$")):
                 for r in rows
             ]
         if fmt == "json":
-            import json
-
             return Response(content=json.dumps(data), media_type="application/json")
         else:
             buf = io.StringIO()
