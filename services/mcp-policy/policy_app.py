@@ -2,6 +2,7 @@ import contextvars
 import json
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -21,7 +22,7 @@ class _JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "time": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "level": record.levelname.lower(),
             "service": self.service_name,
             "message": record.getMessage(),

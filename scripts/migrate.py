@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -94,7 +94,7 @@ def record_migration(conn: psycopg.Connection, version: str, checksum: str) -> N
     with conn.cursor() as cur:
         cur.execute(
             "insert into schema_migrations(version, checksum, applied_at) values (%s, %s, %s)",
-            (version, checksum, datetime.utcnow()),
+            (version, checksum, datetime.now(timezone.utc)),
         )
     conn.commit()
 

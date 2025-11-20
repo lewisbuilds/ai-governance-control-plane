@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -45,7 +45,7 @@ class _JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "time": datetime.utcnow().isoformat() + "Z",
+            "time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "level": record.levelname.lower(),
             "service": self.service_name,
             "message": record.getMessage(),
@@ -224,7 +224,7 @@ async def register_model(reg: ModelRegistration):
         "model_id": reg.model_id,
         "lineage": lineage_record,
         "audit": aud_resp.json(),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -279,5 +279,5 @@ async def infer(req: InferenceRequest):
         "model_id": req.model_id,
         "response": f"[simulated] echo:{req.prompt[:64]}",
         "policy": policy,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
