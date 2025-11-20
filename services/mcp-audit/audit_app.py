@@ -83,7 +83,6 @@ def healthz():
 
 
 def canonical_json(value) -> str:
-    import json
 
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
