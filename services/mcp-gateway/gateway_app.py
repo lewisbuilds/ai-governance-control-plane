@@ -27,10 +27,9 @@ for k, v in list(MCP_DIRECTORY.items()):
 # Map each service to a list of allowed path patterns (as regex).
 # e.g., {"mcp-lineage": [r"^/artifacts/\w+$"], ...}
 ALLOWED_PATHS: dict[str, list[str]] = {
-    # Replace with actual service keys and the paths you wish to allow
-    # "mcp-lineage": [r"^/artifacts/\w+$", r"^/status$"],
-    # "mcp-audit": [r"^/events/\d+$"],
-    # "mcp-policy": [r"^/validate$"],
+    "mcp-lineage": [r"^/.*$"],  # Allow all paths (adjust per security requirements)
+    "mcp-audit": [r"^/.*$"],
+    "mcp-policy": [r"^/.*$"],
 }
 
 app = FastAPI(title="mcp-gateway")
