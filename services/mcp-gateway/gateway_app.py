@@ -118,7 +118,7 @@ def mcp_directory():
 def _sanitize_path(path: str) -> str:
     """
     Sanitize request path to prevent SSRF and path traversal attacks.
-    
+
     Validates that:
     - No directory traversal attempts (..)
     - No scheme injection (http, //)
@@ -135,7 +135,7 @@ def _sanitize_path(path: str) -> str:
 async def _proxy(service: str, path: str, req: Request):
     """
     Proxy requests to internal MCP services with SSRF mitigations.
-    
+
     SSRF Protections:
     1. Service whitelist: MCP_DIRECTORY enforces known internal services only (http:// scheme)
     2. Path validation: _sanitize_path() blocks traversal (..) and scheme injection (http://)
@@ -143,12 +143,12 @@ async def _proxy(service: str, path: str, req: Request):
     4. Header filtering: Only safe headers forwarded (accept, content-type, x-request-id)
     5. Redirect prevention: follow_redirects=False blocks redirect-based SSRF
     6. Env trust disabled: trust_env=False prevents proxy hijacking via environment
-    
+
     Args:
         service: Service name from MCP_DIRECTORY (already validated)
         path: Request path (will be sanitized and validated against allowlist)
         req: FastAPI Request object
-        
+
     Raises:
         HTTPException(404): Service not found in MCP_DIRECTORY
         HTTPException(400): Invalid path (traversal or scheme injection)
