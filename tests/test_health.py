@@ -7,7 +7,6 @@ def _get_or_skip(url: str, timeout: float = 3.0) -> requests.Response:
         return requests.get(url, timeout=timeout)
     except (requests.ConnectionError, requests.Timeout) as exc:
         pytest.skip(f"Service not reachable at {url}: {exc!s}")
-        return None  # type: ignore[return-value]  # unreachable; pytest.skip() raises
 
 
 @pytest.mark.integration
