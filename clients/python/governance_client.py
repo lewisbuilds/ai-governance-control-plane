@@ -51,11 +51,11 @@ class GovernanceClient:
             if not parsed.scheme or parsed.scheme not in ("http", "https"):
                 raise ValueError(f"Invalid URL scheme: {parsed.scheme}")
             if not parsed.netloc:
-                raise ValueError(f"Invalid URL: missing hostname or IP")
+                raise ValueError("Invalid URL: missing hostname or IP")
 
             hostname = parsed.hostname
             if not hostname:
-                raise ValueError(f"Invalid URL: could not extract hostname")
+                raise ValueError("Invalid URL: could not extract hostname")
 
             # Try to resolve hostname to IP address and check if it's private
             try:
@@ -66,15 +66,16 @@ class GovernanceClient:
 
                     # Reject private/loopback/reserved addresses EXCEPT localhost patterns
                     # (localhost is allowed by explicit allowlist above)
-                    if ip_obj.is_private or ip_obj.is_reserved or ip_obj.is_loopback:
-                        if hostname not in ("localhost", "127.0.0.1", "::1"):
-                            raise ValueError(f"URL resolves to private/reserved IP: {ip_str}")
+                    if (
+                        ip_obj.is_private or ip_obj.is_reserved or ip_obj.is_loopback
+                    ) and hostname not in ("localhost", "127.0.0.1", "::1"):
+                        raise ValueError(f"URL resolves to private/reserved IP: {ip_str}")
             except socket.gaierror as e:
                 raise ValueError(f"Could not resolve hostname: {hostname}") from e
 
-            raise ValueError(f"URL not in authorized allowlist: {base_url}")
+            raise ValueError(f"URL not in authorized allowlist: {base_url}") from None
         except urllib.error.URLError as e:
-            raise ValueError(f"Invalid URL: {e}")
+            raise ValueError(f"Invalid URL: {e}") from e
 
     def _request(
         self, method: str, path: str, body: dict[str, Any] | None = None
@@ -103,11 +104,10 @@ class GovernanceClient:
             for _family, _socktype, _proto, _canonname, sockaddr in resolved_ips:
                 ip_str = sockaddr[0]
                 ip_obj = ipaddress.ip_address(ip_str)
-                if ip_obj.is_private or ip_obj.is_reserved or ip_obj.is_loopback:
-                    if hostname not in ("localhost", "127.0.0.1", "::1", "mcp-gateway"):
-                        raise ValueError(
-                            f"Request blocked: hostname resolves to private IP {ip_str}"
-                        )
+                if (
+                    ip_obj.is_private or ip_obj.is_reserved or ip_obj.is_loopback
+                ) and hostname not in ("localhost", "127.0.0.1", "::1", "mcp-gateway"):
+                    raise ValueError(f"Request blocked: hostname resolves to private IP {ip_str}")
         except socket.gaierror as e:
             raise ValueError(f"Could not resolve hostname for request: {e}") from e
 
