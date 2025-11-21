@@ -41,8 +41,11 @@ ALLOWED_PATHS: dict[str, list[str]] = {
     ],
     "mcp-policy": [
         r"^/healthz$",
-        r"^/api/v1/policies/validate$",
-        r"^/api/v1/policies/models$",
+        r"^/validate$",  # Legacy endpoint
+        r"^/models$",  # Legacy endpoint
+        r"^/api/v1/policies/validate$",  # v1 API
+        r"^/api/v1/policies/models$",  # v1 API
+        r"^/api/v1/policies/register-model$",  # v1 API
     ],
 }
 
