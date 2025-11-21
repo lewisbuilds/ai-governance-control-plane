@@ -22,6 +22,9 @@ class GovernanceClient:
     def _request(
         self, method: str, path: str, body: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        # Validate path to prevent URL injection: must start with / and not contain scheme markers
+        if not path.startswith("/") or "://" in path:
+            raise ValueError(f"Invalid path: {path}")
         url = f"{self.base_url}{path}"
         data_bytes = None
         headers = {"Accept": "application/json"}
