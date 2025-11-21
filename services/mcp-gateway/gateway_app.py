@@ -25,11 +25,25 @@ for k, v in list(MCP_DIRECTORY.items()):
         MCP_DIRECTORY.pop(k, None)
 
 # Map each service to a list of allowed path patterns (as regex).
-# e.g., {"mcp-lineage": [r"^/artifacts/\w+$"], ...}
+# SSRF Mitigation: Use explicit allowlists for each service endpoint.
+# Only paths matching one of the patterns for a service are forwarded.
 ALLOWED_PATHS: dict[str, list[str]] = {
-    "mcp-lineage": [r"^/.*$"],  # Allow all paths (adjust per security requirements)
-    "mcp-audit": [r"^/.*$"],
-    "mcp-policy": [r"^/.*$"],
+    "mcp-lineage": [
+        r"^/healthz$",
+        r"^/register$",
+        r"^/artifacts/.*$",
+        r"^/models/.*$",
+    ],
+    "mcp-audit": [
+        r"^/healthz$",
+        r"^/log$",
+        r"^/events.*$",
+    ],
+    "mcp-policy": [
+        r"^/healthz$",
+        r"^/api/v1/policies/validate$",
+        r"^/api/v1/policies/models$",
+    ],
 }
 
 app = FastAPI(title="mcp-gateway")
@@ -102,7 +116,14 @@ def mcp_directory():
 
 
 def _sanitize_path(path: str) -> str:
-    # Disallow path traversal or scheme injection
+    """
+    Sanitize request path to prevent SSRF and path traversal attacks.
+    
+    Validates that:
+    - No directory traversal attempts (..)
+    - No scheme injection (http, //)
+    - Path starts with /
+    """
     if ".." in path or path.startswith("http") or path.startswith("//"):
         raise HTTPException(status_code=400, detail="invalid_path")
     # ensure single leading slash
@@ -112,17 +133,38 @@ def _sanitize_path(path: str) -> str:
 
 
 async def _proxy(service: str, path: str, req: Request):
+    """
+    Proxy requests to internal MCP services with SSRF mitigations.
+    
+    SSRF Protections:
+    1. Service whitelist: MCP_DIRECTORY enforces known internal services only (http:// scheme)
+    2. Path validation: _sanitize_path() blocks traversal (..) and scheme injection (http://)
+    3. Path allowlist: ALLOWED_PATHS restricts endpoints per service (regex patterns)
+    4. Header filtering: Only safe headers forwarded (accept, content-type, x-request-id)
+    5. Redirect prevention: follow_redirects=False blocks redirect-based SSRF
+    6. Env trust disabled: trust_env=False prevents proxy hijacking via environment
+    
+    Args:
+        service: Service name from MCP_DIRECTORY (already validated)
+        path: Request path (will be sanitized and validated against allowlist)
+        req: FastAPI Request object
+        
+    Raises:
+        HTTPException(404): Service not found in MCP_DIRECTORY
+        HTTPException(400): Invalid path (traversal or scheme injection)
+        HTTPException(403): Path not in ALLOWED_PATHS for service
+    """
     base = MCP_DIRECTORY.get(service)
     if not base:
         raise HTTPException(status_code=404, detail="service_not_found")
     spath = _sanitize_path(path)
 
-    # SSRF Mitigation: check path against allowed patterns for service
+    # SSRF Mitigation: Path allowlist check
     patterns = ALLOWED_PATHS.get(service)
     if patterns is None or not any(re.match(p, spath) for p in patterns):
         raise HTTPException(status_code=403, detail="unauthorized_path")
 
-    # Build target URL and forward
+    # Build target URL (scheme, host, port already validated in MCP_DIRECTORY)
     url = base.rstrip("/") + spath
 
     # Prepare request body
