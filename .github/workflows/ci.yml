@@ -81,7 +81,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: pytest -m "not integration" --cov-fail-under=0
       - name: Upload coverage XML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-xml
           path: coverage.xml
