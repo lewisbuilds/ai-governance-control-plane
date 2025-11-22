@@ -1,6 +1,12 @@
-# API
+# API Reference
 
-All services are FastAPI applications listening on port 8000 internally. When accessed through the gateway, prefix the path with the service name (e.g., `/mcp-policy/api/v1/policies/validate`).
+All services are FastAPI applications listening on port 8000 internally. The gateway (port 8080) safely proxies requests to internal services.
+
+**Base URL:** `http://localhost:8080`
+
+**URL Pattern:** `/{service}/{path}`
+
+Example: `POST http://localhost:8080/mcp-policy/api/v1/policies/validate`
 
 ## Common
 
