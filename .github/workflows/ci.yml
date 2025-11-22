@@ -177,7 +177,7 @@ jobs:
           provenance: false
           sbom: false
       - name: Scan ${{ matrix.image }} image
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: 'image'
           image-ref: '${{ matrix.image }}:test'
