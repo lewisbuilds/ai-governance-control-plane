@@ -24,7 +24,7 @@ jobs:
       matrix:
         service: [mcp-gateway, mcp-policy, mcp-audit, mcp-lineage]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:

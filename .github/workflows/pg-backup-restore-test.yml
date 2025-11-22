@@ -16,7 +16,7 @@ jobs:
       DATABASE_URL: postgresql://mcp:ci_pass@localhost:5432/mcpgov
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Start DB and run migrations
         run: |
