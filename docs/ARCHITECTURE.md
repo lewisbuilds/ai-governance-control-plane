@@ -1,6 +1,38 @@
 # Architecture
 
-This repo provides a Compose-first AI Governance Control Plane with four services and a PostgreSQL database.
+This system provides a lightweight, self-hosted governance layer for AI/ML workloads using Docker Compose and PostgreSQL.
+
+## System Overview
+
+```
+┌─────────────────┐
+│  External User  │
+│ (Port 8080)     │
+└────────┬────────┘
+         │
+         ▼
+┌──────────────────────┐
+│   mcp-gateway        │  ← Single entry point
+│  (Reverse Proxy)     │     • Service directory
+│  (SSRF protections)  │     • Path allowlists
+└────────┬─────────────┘
+         │
+    ┌────┼────┐
+    │    │    │
+    ▼    ▼    ▼
+ ┌──────┐ ┌──────────┐ ┌─────────┐
+ │Policy│ │ Lineage  │ │  Audit  │
+ └──────┘ └──────────┘ └─────────┘
+    │         │           │
+    └─────────┼───────────┘
+              │
+              ▼
+        ┌──────────────┐
+        │  PostgreSQL  │
+        │  (Append-only│
+        │   Hash chain)│
+        └──────────────┘
+```
 
 ## Components
 
