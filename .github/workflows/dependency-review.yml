@@ -1,0 +1,23 @@
+name: Security - Dependency Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          config-file: .github/dependency-review-config.yml
+          # Set to true to block if any vulnerabilities are detected at or above the severity threshold
+          # fail-on-scopes: runtime,development

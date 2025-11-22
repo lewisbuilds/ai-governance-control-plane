@@ -1,0 +1,31 @@
+version: 1
+# Dependency Review policy for licenses and vulnerabilities
+# Docs: https://github.com/actions/dependency-review-action
+
+# Fail PRs when vulnerabilities at or above this severity are detected
+fail-on-severity: high
+
+## License policy
+# NOTE: dependency-review-action does not allow specifying both allow-licenses
+# and deny-licenses at the same time. We keep a deny-list here to block
+# strong copyleft and non-permissive licenses that pose redistribution issues.
+
+# Licenses we do not accept in transitive or direct deps
+deny-licenses:
+  - AGPL-3.0-only
+  - AGPL-3.0-or-later
+  - GPL-3.0-only
+  - GPL-3.0-or-later
+  - GPL-2.0-only
+  - GPL-2.0-or-later
+  - LGPL-3.0-only
+  - LGPL-3.0-or-later
+  - LGPL-2.1-only
+  - LGPL-2.1-or-later
+  - SSPL-1.0
+  - BUSL-1.1
+  - Elastic-2.0
+
+# Optionally allow specific packages (by name@version) despite license
+# allow-dependencies-licenses:
+#   - pkg:npm/some-lib@1.2.3

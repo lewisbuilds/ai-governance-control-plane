@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+**/.venv/
+.env/
+
+# Test & coverage
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.tox/
+.cache/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Ignore local wheel cache; CI populates it when needed
+wheelhouse/
+
+# Keep infra keys tracked (public keys only); do not ignore this folder
+!infra/keys/

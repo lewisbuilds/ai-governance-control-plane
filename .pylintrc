@@ -1,0 +1,42 @@
+[MASTER]
+ignore-patterns=^tests/,.*/app\.py,.*/schema\.py,.*[\\/]app\.py
+extension-pkg-allow-list=pydantic
+ignore=__pycache__
+
+[MESSAGES CONTROL]
+disable=
+    missing-docstring,
+    invalid-name,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-locals,
+    too-many-instance-attributes,
+    fixme,
+    broad-except,
+    protected-access,
+    consider-using-f-string,
+    import-error,
+    no-member,
+    duplicate-code,
+    logging-fstring-interpolation,
+    wrong-import-order,
+    too-many-return-statements
+    ,line-too-long
+    ,import-outside-toplevel
+    ,reimported
+    ,redefined-outer-name
+    ,no-else-return
+    ,unused-import
+
+[FORMAT]
+max-line-length=120
+
+[TYPECHECK]
+ignored-modules=
+    fastapi,
+    pydantic,
+    httpx,
+    psycopg_pool
+
+[DESIGN]
+max-args=10

@@ -1,0 +1,59 @@
+name: Security - pip-audit
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # Weekly, Mondays at 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: pip-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Run pip-audit on requirements files
+        run: |
+          set -e
+          FOUND=0
+          if [ -f requirements-dev.txt ]; then
+            pip-audit -r requirements-dev.txt -f sarif -o pip-audit-requirements-dev.sarif || true
+            FOUND=1
+          fi
+          for f in $(git ls-files 'services/**/requirements.txt'); do
+            echo "Auditing $f"
+            out="pip-audit-$(echo "$f" | tr '/' '_' | sed 's/\.txt$//').sarif"
+            pip-audit -r "$f" -f sarif -o "$out" || true
+            FOUND=1
+          done
+          if [ "$FOUND" -eq 0 ]; then
+            echo "No requirements files found. Running environment audit."
+            pip-audit -f sarif -o pip-audit-env.sarif || true
+          fi
+
+      - name: Upload SARIF reports
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: .
+          category: pip-audit
