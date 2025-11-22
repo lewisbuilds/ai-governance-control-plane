@@ -8,6 +8,8 @@ All services are FastAPI applications listening on port 8000 internally. The gat
 
 Example: `POST http://localhost:8080/mcp-policy/api/v1/policies/validate`
 
+**Note:** The endpoint paths listed in the service sections below are the service-internal paths. When accessing through the gateway, prepend the service name to the path. For example, the mcp-lineage service's `POST /register` endpoint is accessed as `POST /mcp-lineage/register` through the gateway.
+
 ## Common
 
 - `GET /healthz` ⇒ `{ "ok": true }`
