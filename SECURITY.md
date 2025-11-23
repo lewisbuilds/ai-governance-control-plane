@@ -12,7 +12,7 @@ The AI Governance Control Plane team takes security vulnerabilities seriously. W
 2. Click **"Report a vulnerability"**
 3. Fill in the vulnerability details (see guidance below)
 
-**Alternative:** If you prefer email, contact security@example.com with subject line starting with [SECURITY].
+**Alternative:** If you prefer email, contact security@lewisbuilds.com with subject line starting with [SECURITY].
 
 ### What to Include in Your Report
 
