@@ -118,8 +118,8 @@ When deploying this project in production:
 
 ### Contact
 
-For security questions or to report a vulnerability:
-- **GitHub Security Advisory**: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories (preferred method)
+To report a vulnerability or ask security questions:
+- **GitHub Security Advisory**: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories
 
 ### Acknowledgments
 
