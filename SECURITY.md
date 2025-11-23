@@ -14,7 +14,6 @@ The AI Governance Control Plane team takes security vulnerabilities seriously. W
 
 **Alternative:** If you prefer email, contact security@lewisbuilds.com with subject line starting with [SECURITY].
 
-
 ### What to Include in Your Report
 
 To help us understand and address the issue quickly, please provide:
