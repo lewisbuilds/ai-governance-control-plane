@@ -27,7 +27,7 @@ To help us understand and address the issue quickly, please provide:
 - **Suggested Fix**: Any proposed remediation (optional)
 
 **Example:**
-`
+```
 Title: CVE-2024-XXXXX - Multipart Form DoS in FastAPI Dependency
 
 Description: The project uses FastAPI 0.111.0, which depends on Starlette <0.40.0. 
@@ -42,7 +42,7 @@ Proof of Concept: [steps to trigger the vulnerability]
 Impact: HIGH - An attacker can exhaust server memory and cause service unavailability.
 
 Suggested Fix: Upgrade to FastAPI 0.115.0+ or Starlette 0.40.0+
-`
+```
 
 ### Scope of Vulnerabilities
 
