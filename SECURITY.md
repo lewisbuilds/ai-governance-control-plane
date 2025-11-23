@@ -14,7 +14,6 @@ The AI Governance Control Plane team takes security vulnerabilities seriously. W
 
 **Alternative:** If you prefer email, contact security@lewisbuilds.com with subject line starting with [SECURITY].
 
-
 ### What to Include in Your Report
 
 To help us understand and address the issue quickly, please provide:
@@ -29,7 +28,7 @@ To help us understand and address the issue quickly, please provide:
 
 **Example:**
 ```
-Title: CVE-2024-YYYYY - Path Traversal in File Upload Handler
+Title: CVE-2025-XXXXX - Path Traversal in File Upload Handler
 
 Description: The file upload endpoint does not properly sanitize user-supplied filenames, allowing attackers to upload files outside the intended directory via path traversal sequences (e.g., "../").
 
