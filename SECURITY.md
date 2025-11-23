@@ -12,7 +12,8 @@ The AI Governance Control Plane team takes security vulnerabilities seriously. W
 2. Click **"Report a vulnerability"**
 3. Fill in the vulnerability details (see guidance below)
 
-**Alternative:** If you prefer email, contact security@example.com with subject line starting with [SECURITY].
+**Alternative:** If you prefer email, contact security@lewisbuilds.com with subject line starting with [SECURITY].
+
 
 ### What to Include in Your Report
 
@@ -27,22 +28,21 @@ To help us understand and address the issue quickly, please provide:
 - **Suggested Fix**: Any proposed remediation (optional)
 
 **Example:**
-`
-Title: CVE-2024-XXXXX - Multipart Form DoS in FastAPI Dependency
+```
+Title: CVE-2024-YYYYY - Path Traversal in File Upload Handler
 
-Description: The project uses FastAPI 0.111.0, which depends on Starlette <0.40.0. 
-This version is vulnerable to denial-of-service attacks via unbounded multipart form fields.
+Description: The file upload endpoint does not properly sanitize user-supplied filenames, allowing attackers to upload files outside the intended directory via path traversal sequences (e.g., "../").
 
-Affected Versions: v0.1.0, v0.1.1
+Affected Versions: v0.2.0, v0.2.1
 
-Attack Vector: Network - unauthenticated attacker can send specially crafted multipart requests
+Attack Vector: Network - unauthenticated attacker can upload files with crafted filenames
 
 Proof of Concept: [steps to trigger the vulnerability]
 
-Impact: HIGH - An attacker can exhaust server memory and cause service unavailability.
+Impact: HIGH - An attacker can overwrite critical files or place malicious files on the server.
 
-Suggested Fix: Upgrade to FastAPI 0.115.0+ or Starlette 0.40.0+
-`
+Suggested Fix: Validate and sanitize filenames to prevent path traversal; restrict uploads to a safe directory.
+```
 
 ### Scope of Vulnerabilities
 
@@ -120,10 +120,8 @@ When deploying this project in production:
 
 ### Contact
 
-For security questions or to report a vulnerability:
+To report a vulnerability or ask security questions:
 - **GitHub Security Advisory**: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories
-- **Email**: security@example.com (replace with actual contact)
-- **PGP Key**: (optional - provide public key if available)
 
 ### Acknowledgments
 
