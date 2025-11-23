@@ -29,20 +29,19 @@ To help us understand and address the issue quickly, please provide:
 
 **Example:**
 ```
-Title: CVE-2024-XXXXX - Multipart Form DoS in FastAPI Dependency
+Title: CVE-2024-YYYYY - Path Traversal in File Upload Handler
 
-Description: The project uses FastAPI 0.111.0, which depends on Starlette <0.40.0. 
-This version is vulnerable to denial-of-service attacks via unbounded multipart form fields.
+Description: The file upload endpoint does not properly sanitize user-supplied filenames, allowing attackers to upload files outside the intended directory via path traversal sequences (e.g., "../").
 
-Affected Versions: v0.1.0, v0.1.1
+Affected Versions: v0.2.0, v0.2.1
 
-Attack Vector: Network - unauthenticated attacker can send specially crafted multipart requests
+Attack Vector: Network - unauthenticated attacker can upload files with crafted filenames
 
 Proof of Concept: [steps to trigger the vulnerability]
 
-Impact: HIGH - An attacker can exhaust server memory and cause service unavailability.
+Impact: HIGH - An attacker can overwrite critical files or place malicious files on the server.
 
-Suggested Fix: Upgrade to FastAPI 0.115.0+ or Starlette 0.40.0+
+Suggested Fix: Validate and sanitize filenames to prevent path traversal; restrict uploads to a safe directory.
 ```
 
 ### Scope of Vulnerabilities
