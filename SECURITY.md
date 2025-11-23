@@ -12,8 +12,6 @@ The AI Governance Control Plane team takes security vulnerabilities seriously. W
 2. Click **"Report a vulnerability"**
 3. Fill in the vulnerability details (see guidance below)
 
-**Alternative:** If you prefer email, contact security@example.com with subject line starting with [SECURITY].
-
 ### What to Include in Your Report
 
 To help us understand and address the issue quickly, please provide:
@@ -121,9 +119,7 @@ When deploying this project in production:
 ### Contact
 
 For security questions or to report a vulnerability:
-- **GitHub Security Advisory**: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories
-- **Email**: security@example.com (replace with actual contact)
-- **PGP Key**: (optional - provide public key if available)
+- **GitHub Security Advisory**: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories (preferred method)
 
 ### Acknowledgments
 
