@@ -231,6 +231,7 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           image: '${{ matrix.image }}:sbom'
+          syft-version: v1.19.0
           format: 'cyclonedx-json'
           artifact-name: 'sbom-${{ matrix.image }}.cdx.json'
           upload-artifact: true
