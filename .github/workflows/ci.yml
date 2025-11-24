@@ -203,7 +203,7 @@ jobs:
       matrix:
         image: [gateway, policy, audit, lineage]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python (for optional wheelhouse)
         uses: actions/setup-python@v5
         with:
