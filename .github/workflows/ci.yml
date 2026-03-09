@@ -112,7 +112,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Build mcp-gateway
         id: build_gateway
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: services/mcp-gateway/Dockerfile
@@ -122,7 +122,7 @@ jobs:
           sbom: false
       - name: Build mcp-policy
         id: build_policy
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: services/mcp-policy/Dockerfile
@@ -132,7 +132,7 @@ jobs:
           sbom: false
       - name: Build mcp-audit
         id: build_audit
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: services/mcp-audit/Dockerfile
@@ -142,7 +142,7 @@ jobs:
           sbom: false
       - name: Build mcp-lineage
         id: build_lineage
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: services/mcp-lineage/Dockerfile
@@ -168,7 +168,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build ${{ matrix.image }} image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: services/mcp-${{ matrix.image }}/Dockerfile
@@ -219,7 +219,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build ${{ matrix.image }} image for SBOM
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: services/mcp-${{ matrix.image }}/Dockerfile
