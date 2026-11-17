@@ -131,7 +131,7 @@ class _Conn:
 
 def test_main_runs_baseline_then_migrations(migrate, monkeypatch, capsys):
     monkeypatch.setenv("DATABASE_URL", "postgresql://x")
-    monkeypatch.setattr(migrate.psycopg, "connect", lambda url, autocommit=False: _Conn())
+    monkeypatch.setattr(migrate.psycopg, "connect", lambda *_a, **_k: _Conn())
     monkeypatch.setattr(migrate, "ensure_schema_table", lambda conn: None)
     (migrate.folder / "0001_a.sql").write_text("select 1;")
 

@@ -21,7 +21,7 @@ class FakeAsyncClient:
     calls: list[dict] = []
     responder = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_args, **kwargs):
         self.options = kwargs
 
     async def __aenter__(self):
@@ -59,7 +59,7 @@ def gateway(monkeypatch):
     monkeypatch.setattr(module, "MCP_DIRECTORY", dict(DIRECTORY))
     monkeypatch.setattr(module.httpx, "AsyncClient", FakeAsyncClient)
     FakeAsyncClient.calls = []
-    FakeAsyncClient.responder = lambda m, u, c: _reply(body={"ok": True})
+    FakeAsyncClient.responder = lambda *_a: _reply(body={"ok": True})
     return module
 
 
@@ -109,7 +109,7 @@ def test_path_outside_allowlist_is_403(client):
 
 
 def test_proxy_forwards_query_and_only_safe_headers(client):
-    FakeAsyncClient.responder = lambda m, u, c: _reply(body=b"id,x\n1,2\n", content_type="text/csv")
+    FakeAsyncClient.responder = lambda *_a: _reply(body=b"id,x\n1,2\n", content_type="text/csv")
 
     resp = client.get(
         "/mcp-audit/export?fmt=csv",
@@ -127,7 +127,7 @@ def test_proxy_forwards_query_and_only_safe_headers(client):
 
 
 def test_proxy_passes_post_body_and_upstream_status(client):
-    FakeAsyncClient.responder = lambda m, u, c: _reply(404, {"detail": "nope"})
+    FakeAsyncClient.responder = lambda *_a: _reply(404, {"detail": "nope"})
 
     resp = client.post("/mcp-lineage/register", json={"model_id": "m"})
 
@@ -170,7 +170,7 @@ def test_register_model_calls_lineage_then_audit(client):
 
 
 def test_register_model_reports_lineage_failure(client):
-    FakeAsyncClient.responder = lambda m, u, c: _reply(500, {"detail": "x"})
+    FakeAsyncClient.responder = lambda *_a: _reply(500, {"detail": "x"})
     resp = client.post("/api/v1/models/register", json=REGISTRATION)
     assert resp.status_code == 502
     assert resp.json()["detail"] == "lineage_register_failed"
@@ -230,7 +230,7 @@ def test_inference_denied_is_403_but_still_audited(client):
 
 
 def test_inference_reports_policy_failure(client):
-    FakeAsyncClient.responder = lambda m, u, c: _reply(500, {"detail": "x"})
+    FakeAsyncClient.responder = lambda *_a: _reply(500, {"detail": "x"})
     resp = client.post("/api/v1/models/infer", json=INFER)
     assert resp.status_code == 502
     assert resp.json()["detail"] == "policy_validate_failed"

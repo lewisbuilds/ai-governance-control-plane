@@ -56,7 +56,7 @@ class FakePool:
     cursor = FakeCursor()
     fail = False
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
         pass
 
     def connection(self) -> FakeConnection:
