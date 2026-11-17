@@ -1,0 +1,13 @@
+# Private Code Review Collection
+
+My private code review rules are stored in a private repo:
+https://github.com/lewisbuilds/copilot-instructions-private
+
+Primary file for reviews:
+- .collections/code-review.md
+- .collections/code-review.collection.yml
+
+When helping with PR reviews or code feedback:
+- Treat that file as the main checklist.
+- Lead with reasoning (what’s risky or unclear) and then suggest minimal, concrete fixes.
+- Prefer small, focused changes over big refactors unless explicitly requested.
