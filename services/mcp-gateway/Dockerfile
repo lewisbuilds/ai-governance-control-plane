@@ -1,6 +1,6 @@
 #### Multi-stage build: installs via requirements.txt; offline wheelhouse fallback supported
 
-FROM python:3.11-slim AS builder
+FROM python:3.15-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -31,7 +31,7 @@ RUN set -eux; \
     fi
 
 #### Runtime image
-FROM python:3.11-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
