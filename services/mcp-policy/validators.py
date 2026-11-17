@@ -157,13 +157,17 @@ def _condition_applies(
 def evaluate(payload: dict[str, Any]) -> GateResult:
     start = time.perf_counter_ns()
     policies, risk_matrix = _load_policies()
-    score, reasons = _compute_risk(payload, risk_matrix)
+    risk = payload.get("risk", {})
+    invalid_risk_type = not isinstance(risk, dict)
+    risk = {} if invalid_risk_type else risk
+    score, reasons = _compute_risk({**payload, "risk": risk}, risk_matrix)
+    if invalid_risk_type:
+        reasons.append("invalid_risk_factor:risk_must_be_object")
     aibom_ok, aibom_reason = _verify_aibom(payload)
     reasons.append(aibom_reason)
 
     # The policy always evaluates the score computed from the configured risk factors.
-    evaluated_payload = dict(payload)
-    evaluated_payload["risk"] = {**(payload.get("risk", {}) or {}), "score": score}
+    evaluated_payload = {**payload, "risk": {**risk, "score": score}}
 
     required_failures: list[str] = []
     for rule in policies.get("require", []) or []:
