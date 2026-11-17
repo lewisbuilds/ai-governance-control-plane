@@ -3,7 +3,7 @@ line-length = 100
 target-version = "py311"
 lint.select = ["E","F","I","B","UP","SIM","C90"]
 lint.ignore = ["E203","E266","E501"]
-exclude = [".venv","wheelhouse","tests/__pycache__"]
+exclude = [".venv","wheelhouse","tests/__pycache__",".github/skills"]
 
 [tool.ruff.format]
 quote-style = "double"

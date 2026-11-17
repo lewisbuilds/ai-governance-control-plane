@@ -38,8 +38,8 @@ services:
         echo "=== Starting db-migrate ==="
         echo "DATABASE_URL: ${DATABASE_URL}"
         echo "Installing psycopg[binary]..."
-        python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse 'psycopg[binary]==3.3.9' 2>/dev/null || \
-        python -m pip install --no-input --no-cache-dir 'psycopg[binary]==3.3.9' || {
+        python -m pip install --no-input --no-cache-dir --no-index --find-links=/wheelhouse 'psycopg[binary]==3.2.1' 2>/dev/null || \
+        python -m pip install --no-input --no-cache-dir 'psycopg[binary]==3.2.1' || {
           echo "ERROR: Failed to install psycopg[binary] from wheelhouse or PyPI"
           exit 1
         }
