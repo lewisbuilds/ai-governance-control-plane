@@ -11,10 +11,12 @@ quote-style = "double"
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+extend-exclude = '(\.github/skills|\.venv|test_venv|wheelhouse)'
 
 [tool.isort]
 profile = "black"
 line_length = 100
+extend_skip_glob = [".github/skills/*", ".venv/*", "test_venv/*", "scripts/wheelhouse/*"]
 [tool.poetry]
 name = "ai-governance-control-plane"
 version = "0.1.0"
