@@ -15,7 +15,8 @@ test_venv
 .coverage
 coverage.xml
 htmlcov/
-
+.github/skills
+.github/agents
 # Build artifacts
 build/
 dist/
