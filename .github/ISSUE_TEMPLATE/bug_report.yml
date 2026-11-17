@@ -1,0 +1,32 @@
+name: Bug report
+description: Something does not work as the documentation says it should.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Commands or requests that trigger the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or output
+      description: Paste relevant output. Remove passwords and keys first.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+  - type: markdown
+    attributes:
+      value: "Security problems should not go here. Follow SECURITY.md instead."

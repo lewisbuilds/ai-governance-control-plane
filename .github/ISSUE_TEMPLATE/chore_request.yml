@@ -1,0 +1,49 @@
+name: Chore request
+description: Track maintenance work such as dependency updates, cleanup, or tech debt.
+title: "chore: "
+labels: ["chore"]
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: Overview
+      description: What needs to be cleaned up or updated, and why?
+    validations:
+      required: true
+  - type: dropdown
+    id: ease
+    attributes:
+      label: Ease of remediation
+      description: 1 is trivial. 5 is complex.
+      options: ["1", "2", "3", "4", "5"]
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: 1 is minimal. 5 is critical.
+      options: ["1", "2", "3", "4", "5"]
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk of doing nothing
+      options: ["Low", "Medium", "High"]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Implementation steps
+      description: An ordered list of actions.
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: How to verify
+      description: How will we know the work is done and nothing broke?
+    validations:
+      required: true

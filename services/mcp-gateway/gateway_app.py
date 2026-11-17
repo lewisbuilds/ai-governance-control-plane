@@ -196,12 +196,9 @@ async def _proxy(service: str, path: str, req: Request):
         )
 
 
-@app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy(service: str, path: str, request: Request):
-    return await _proxy(service, path, request)
-
-
 # -------- High-level orchestration endpoints --------
+# The catch all proxy route is registered at the end of this file so that these
+# specific routes are matched first.
 
 
 def _service_url(key: str) -> str:
@@ -323,3 +320,8 @@ async def infer(req: InferenceRequest):
         "policy": policy,
         "timestamp": datetime.utcnow().isoformat(),
     }
+
+
+@app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def proxy(service: str, path: str, request: Request):
+    return await _proxy(service, path, request)
