@@ -1,141 +1,148 @@
-## AI Governance Control Plane
+# Quickstart
 
-FastAPI + Postgres + Docker Compose stack that provides:
-## AI Governance Control Plane
+This guide gets the stack running and walks through each service once. For a shorter version, see the [README](../README.md).
 
-FastAPI + Postgres + Docker Compose stack that provides:
-- Model lineage registry (append-only records)
-- Policy validation with YAML rules and optional AIBOM verification (Ed25519 public key only)
-- Append-only audit log with hash chaining and export
-- A gateway that safely proxies requests to internal services and exposes a service directory
+## What you get
 
-Security and ops defaults: non-root containers, read-only filesystems, tmpfs for caches, no-new-privileges, cap_drop: [ALL], parameterized SQL, SSRF/path traversal guards, and standard security headers.
+A FastAPI and PostgreSQL stack, run with Docker Compose, that provides:
 
-Key directories:
-- `services/` — mcp-lineage, mcp-audit, mcp-policy, mcp-gateway
-- `infra/init.sql` — DB schema (model_lineage, audit_log)
-- `policies/` — customer-editable YAML policies
-- `clients/python/` — minimal Python client
-- `docs/` — architecture and API docs
+- A lineage registry for models. Records are only added, never changed.
+- Policy checks with YAML rules and an optional AIBOM signature check. The signature check uses an Ed25519 public key only.
+- An audit log where each event is linked to the one before it. You can export the log.
+- A gateway that forwards requests to the internal services and lists them in a directory.
 
-## Quickstart
+Security defaults: containers run as a normal user with a read only filesystem, `no-new-privileges` is on, all extra Linux capabilities are dropped, SQL is parameterized, the gateway guards against SSRF and path traversal, and responses carry standard security headers.
 
-1) Configure environment (optional — defaults exist in `.env.example`).
+Key folders:
 
-  Optionally add an explicit request ID to correlate logs across services:
+- `services/` holds `mcp-lineage`, `mcp-audit`, `mcp-policy`, and `mcp-gateway`.
+- `infra/init.sql` creates the database tables `model_lineage` and `audit_log`.
+- `policies/` holds the YAML policy files you can edit.
+- `clients/python/` holds a small Python client.
+- `docs/` holds the architecture and API docs.
 
-  - PowerShell
+## 1. Set up
 
-  ```powershell
-  $rid = [guid]::NewGuid().ToString()
-  Invoke-RestMethod http://localhost:8080/mcp-policy/healthz -Headers @{ "X-Request-ID" = $rid }
-  docker compose logs -f mcp-gateway mcp-policy | Select-String $rid
-  ```
-
-  - curl
-
-  ```sh
-  RID=$(uuidgen); curl -H "X-Request-ID: $RID" http://localhost:8080/mcp-policy/healthz; \
-  docker compose logs -f mcp-gateway mcp-policy | grep "$RID"
-  ```
-
-2) Start Docker Desktop (Linux containers), then from the repo root:
+Copy the sample settings, then change the password:
 
 ```powershell
-# Build and start
-docker compose build
-docker compose up -d
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
 
-# Wait for gateway health
-for ($i=0; $i -lt 60; $i++) {
-  try { $r = Invoke-RestMethod http://localhost:8080/mcp -TimeoutSec 5; if ($r) { $r | ConvertTo-Json -Depth 5; break } }
-  catch {}
-  Start-Sleep -Seconds 2
+Start Docker Desktop with Linux containers, then run this from the repository root:
+
+```powershell
+docker compose up -d --build
+
+for ($i = 0; $i -lt 60; $i++) {
+  try { Invoke-RestMethod http://localhost:8080/mcp -TimeoutSec 5 | ConvertTo-Json -Depth 5; break }
+  catch { Start-Sleep -Seconds 2 }
 }
 ```
 
-3) Register a lineage record:
+Compose waits for each service's health check before it starts the services that depend on it. Health endpoints:
+
+- `mcp-gateway`: `/healthz` and `/mcp`
+- `mcp-policy`, `mcp-audit`, and `mcp-lineage`: `/healthz`
+
+## 2. Register a model
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-lineage/register -ContentType application/json -Body (Get-Content .\examples\register_model.json -Raw)
-```
-3. Health endpoints
-
-  - `mcp-gateway`: `/healthz`, `/mcp`
-  - `mcp-policy`: `/healthz`
-  - `mcp-audit`: `/healthz`
-  - `mcp-lineage`: `/healthz`
-
-  Compose healthchecks wait for these endpoints before starting dependents.
-
-
-4) Validate a policy input:
-
-```powershell
-$payload = @{ payload = @{ model_class = "vision"; use_case = "general"; risk = @{ data_sensitivity = 1; model_complexity = 1; deployment_impact = 1; monitoring_maturity = 3 } } }
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-policy/validate -ContentType application/json -Body ($payload | ConvertTo-Json -Depth 8)
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-lineage/register `
+  -ContentType application/json -Body (Get-Content .\examples\register_model.json -Raw)
 ```
 
-5) Log an audit event:
+## 3. Check a model against the policy
+
+The policy needs `flags`, `metrics`, and `context` fields as well as `risk`. If any are missing, the request is denied.
 
 ```powershell
-$audit = @{ event_type = "policy_decision"; subject = "demo@1.0.0"; decision = $true; details = @{ note = "smoke" } }
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-audit/log -ContentType application/json -Body ($audit | ConvertTo-Json -Depth 8)
+$payload = @{ payload = @{
+  flags = @{ contains_forbidden_data = $false }
+  context = @{ safety_critical = $true }
+  metrics = @{ accuracy = 0.97 }
+  risk = @{ data_sensitivity = 1; model_complexity = 1; deployment_impact = 1; monitoring_maturity = 3 }
+  evidence = @{ shap_report_path = "reports/demo-shap.json"; lineage_hashes = @("sha256:example") }
+} }
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-policy/validate `
+  -ContentType application/json -Body ($payload | ConvertTo-Json -Depth 8)
 ```
 
-### Building behind a corporate proxy or with a PyPI mirror
-
-If Docker builds fail to reach PyPI (files.pythonhosted.org), set these optional variables and compose will pass them to the builds:
+## 4. Record an audit event
 
 ```powershell
-# Optional: internal PyPI mirror
+$audit = @{ event_type = "policy_decision"; subject = "demo@1.0.0"; decision = $true; details = @{ note = "smoke test" } }
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-audit/log `
+  -ContentType application/json -Body ($audit | ConvertTo-Json -Depth 8)
+```
+
+## Follow one request through the logs
+
+Send your own request ID, then search the logs for it:
+
+```powershell
+$rid = [guid]::NewGuid().ToString()
+Invoke-RestMethod http://localhost:8080/mcp-policy/healthz -Headers @{ "X-Request-ID" = $rid }
+docker compose logs mcp-gateway mcp-policy | Select-String $rid
+```
+
+On Linux or macOS:
+
+```sh
+RID=$(uuidgen); curl -H "X-Request-ID: $RID" http://localhost:8080/mcp-policy/healthz
+docker compose logs mcp-gateway mcp-policy | grep "$RID"
+```
+
+## Building behind a proxy or a PyPI mirror
+
+If Docker builds cannot reach PyPI, set these optional variables. Compose passes them to the builds.
+
+```powershell
 $env:PIP_INDEX_URL = "https://your-internal-pypi/simple"
 $env:PIP_TRUSTED_HOST = "your-internal-pypi"
-
-# Optional: corporate HTTP(S) proxy (and NO_PROXY for local addresses)
 $env:HTTP_PROXY = "http://proxy.corp:8080"
 $env:HTTPS_PROXY = "http://proxy.corp:8080"
 $env:NO_PROXY = "localhost,127.0.0.1,.local"
-
-# Then build
 docker compose build
 ```
 
-## Services & Endpoints
+## Endpoints at a glance
 
-- mcp-lineage: `POST /register`, `GET /lineage/{model_id}`, `GET /healthz`
-- mcp-policy: `POST /validate`, `GET /healthz`
-- mcp-audit: `POST /log`, `GET /events`, `GET /export?fmt=json|csv`, `GET /healthz`
-- mcp-gateway: `GET /mcp`, proxy `/{service}/{path}` (safe allow-list only)
+- `mcp-lineage`: `POST /register`, `GET /lineage/{model_id}`, `GET /healthz`
+- `mcp-policy`: `POST /validate`, `GET /healthz`
+- `mcp-audit`: `POST /log`, `GET /events`, `GET /export?fmt=json` or `fmt=csv`, `GET /healthz`
+- `mcp-gateway`: `GET /mcp`, and forwarding for `/{service}/{path}` on the allowlist
 
-See `docs/API.md` for request/response details and examples.
+See [API.md](API.md) for full details.
 
-## Configuration
+## Settings
 
-- `.env.example` provides defaults:
-  - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-  - `DATABASE_URL`
-  - `AIBOM_PUBLIC_KEY_PATH`, `AIBOM_REQUIRED` (AIBOM optional by default)
-  - `GATE_SLA_MS` (policy decision SLA window)
-- Place the AIBOM Ed25519 public key at `infra/keys/aibom_public_key.pem` when using AIBOM verification.
+`.env.example` provides these:
 
-## Security Posture
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `DATABASE_URL`
+- `AIBOM_PUBLIC_KEY_PATH` and `AIBOM_REQUIRED`. AIBOM checking is optional by default.
+- `GATE_SLA_MS`, the time budget for a policy decision
 
-- Containers: non-root, read-only rootfs, tmpfs for caches, no-new-privileges, cap_drop: [ALL]
-- Gateway: allow-list routing (`MCP_DIRECTORY`), path sanitizer (blocks `..`, `//`, scheme injection), http-only internal URLs
-- Apps: parameterized SQL, YAML safe loading, security headers (CSP/NoSniff/HSTS/XFO)
-- Errors: generic codes to clients, details retained only in logs
+To use AIBOM checking, put the Ed25519 public key at `infra/keys/aibom_public_key.pem`.
 
-## CI Smoke Test
+## Security summary
 
-GitHub Actions workflow `.github/workflows/governance-gate.yml` builds the stack, waits for health, performs a policy validation and audit log write, and prints logs on failure.
+- **Containers:** normal user, read only filesystem, temporary storage for caches, `no-new-privileges`, and all capabilities dropped.
+- **Gateway:** routes only to an allowlist (`MCP_DIRECTORY`). Its path cleaner blocks `..`, `//`, and scheme tricks. Internal URLs are plain HTTP.
+- **Apps:** parameterized SQL, safe YAML loading, and security headers (CSP, NoSniff, HSTS, X Frame Options).
+- **Errors:** clients get generic codes. Details stay in the logs.
+
+## Automated smoke test
+
+The GitHub Actions workflow `.github/workflows/governance-gate.yml` builds the stack and waits for it to be healthy. It then runs a policy check and writes an audit event. It prints the logs if anything fails.
 
 ## Examples
 
-See `examples/` for a lineage JSON and a scripted walkthrough in `demo_notebook.md`.
+The `examples/` folder has a sample lineage file. [demo_notebook.md](../examples/demo_notebook.md) is a scripted walkthrough.
 
-## Next Enhancements
+## Ideas for next steps
 
-- Enforce reproducible builds by pinning `requirements.txt` and maintaining the `wheelhouse/` for offline installs
-- Add dependency vulnerability scanning (pip-audit/Trivy) in CI
-- Standardize entirely on `requirements.txt` + wheelhouse; no Poetry required
+- Keep builds repeatable by pinning `requirements.txt` and keeping the `wheelhouse/` for offline installs.
+- Scan dependencies for vulnerabilities in CI with pip-audit or Trivy.
+- Use `requirements.txt` and the wheelhouse everywhere. Poetry is not needed.

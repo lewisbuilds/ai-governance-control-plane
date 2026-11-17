@@ -1,8 +1,8 @@
 # Architecture
 
-## System shape
+## The big picture
 
-The project runs four FastAPI REST services and PostgreSQL under Docker Compose. Only the gateway publishes a host port. Services communicate over the Compose network; lineage, audit, and policy services read configuration or data from PostgreSQL and mounted policy files.
+Docker Compose runs four FastAPI services and PostgreSQL. Only the gateway is reachable from your computer. The services talk to each other over the Compose network. The lineage and audit services store data in PostgreSQL. The policy service reads mounted policy files.
 
 ```mermaid
 flowchart LR
@@ -12,38 +12,40 @@ flowchart LR
     Gateway --> Audit
     Lineage --> Postgres
     Audit --> Postgres
-    Policy -->|read-only YAML + optional public key| Config
+    Policy -->|read only YAML and optional public key| Config
 ```
 
-The `mcp-*` names are historical service names. The current implementation does not speak the Model Context Protocol or use its SDK; the public interface is REST/JSON.
+The `mcp` names are historical. The services do not speak the Model Context Protocol. Their interface is REST and JSON.
 
-## Request flow
+## How a decision flows
 
-1. A client registers model ID, version, artifacts, owner, and metadata through `POST /mcp-lineage/register`.
-2. A client submits evaluation data to `POST /mcp-policy/validate`. The policy service loads the YAML files, computes a weighted score, optionally verifies an AIBOM signature, and returns an allow/deny decision with reasons and elapsed time.
-3. The caller records that decision at `POST /mcp-audit/log`. The audit service hashes the event with the preceding entry hash and persists the result.
-4. Reviewers can read events or export JSON/CSV through the gateway.
+1. A client registers a model with `POST /mcp-lineage/register`. It sends the model ID, version, artifacts, owner, and metadata.
+2. The client sends evaluation data to `POST /mcp-policy/validate`. The policy service loads the YAML files and calculates a weighted score. It can also check an AIBOM signature. It returns allow or deny with reasons and the time taken.
+3. The client records that decision with `POST /mcp-audit/log`. The audit service hashes the event together with the previous hash and stores it.
+4. Reviewers read the events, or export them as JSON or CSV, through the gateway.
 
-The services are intentionally separate so a demo can show the boundary between registering evidence, evaluating rules, and recording decisions. The current stack does not coordinate those calls into an atomic workflow.
+The services are kept separate on purpose. That makes it clear where evidence is registered, where rules are checked, and where decisions are recorded. The stack does not tie the three calls into one all or nothing step. If one call fails, the caller must handle it.
 
-## Service responsibilities
+## What each part does
 
-| Component | Responsibility | State |
+| Component | Job | Where it keeps state |
 | --- | --- | --- |
-| `mcp-gateway` | Directory, path allowlist, request forwarding, high-level demo endpoints | No durable state |
-| `mcp-lineage` | Append model version and artifact metadata; look up model history | PostgreSQL `model_lineage` |
-| `mcp-policy` | Load YAML, calculate weighted risk, apply require/deny checks, optional AIBOM verification | Read-only YAML and optional public key |
-| `mcp-audit` | Append decision events and return JSON/CSV exports | PostgreSQL `audit_log` |
-| `db` | Store lineage, audit events, and migration history | Named PostgreSQL volume |
+| `mcp-gateway` | Lists services, checks paths against an allowlist, forwards requests, and offers demo endpoints | None |
+| `mcp-lineage` | Adds model versions and artifacts, and looks up a model's history | PostgreSQL table `model_lineage` |
+| `mcp-policy` | Loads YAML, calculates risk, applies required and denied checks, and can verify AIBOM signatures | Read only YAML files and an optional public key |
+| `mcp-audit` | Adds decision events and exports them as JSON or CSV | PostgreSQL table `audit_log` |
+| `db` | Stores lineage, audit events, and migration history | A named PostgreSQL volume |
 
-## Evidence model
+## How evidence is stored
 
-`model_lineage` stores a row per registration. `audit_log` stores the event, the prior event hash, and the new entry hash. A trigger blocks ordinary `UPDATE` and `DELETE` statements on audit rows. This detects broken links and discourages application-level edits; it does not protect against a privileged database operator who can alter the schema, disable triggers, or rewrite data.
+`model_lineage` has one row for each registration. `audit_log` stores each event, the hash of the event before it, and its own hash. A database trigger blocks normal `UPDATE` and `DELETE` statements on audit rows.
 
-Policy evidence is reproducible only when the caller preserves the submitted payload, exact policy files, risk matrix, public-key identity, and service version with the returned result. This repository does not yet persist a policy-file digest alongside each decision.
+This helps you notice broken links and stops casual edits from the application. It does not stop a database administrator who can change the schema, turn off triggers, or rewrite data.
 
-## Runtime and security boundaries
+You can only reproduce a policy decision if you keep the submitted payload, the exact policy files, the risk matrix, the public key identity, and the service version along with the result. The project does not yet store a digest of the policy files with each decision.
 
-Compose health checks verify process readiness and database availability where applicable. Application containers use read-only root filesystems, a non-root account, dropped capabilities, and temporary filesystems. PostgreSQL owns the persistent writable volume. The gateway restricts service names, paths, forwarded headers, redirects, and upstream timeouts.
+## Runtime and security
 
-There is no built-in user authentication, authorization, tenant isolation, rate limiting, or TLS termination. The sample stack is for local evaluation on a trusted network, not direct public exposure.
+Compose health checks confirm that each service is ready and that the database can be reached. Application containers use a read only filesystem, run as a normal user, drop extra privileges, and use temporary storage where needed. PostgreSQL owns the only persistent writable volume. The gateway limits which services, paths, headers, redirects, and wait times it allows.
+
+There is no built in login, permission system, customer separation, rate limiting, or TLS. This stack is for local testing on a trusted network. Do not expose it directly to the public internet.

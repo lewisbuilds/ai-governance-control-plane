@@ -1,5 +1,5 @@
-Place your AIBOM Ed25519 public key here as `aibom_public_key.pem` (PEM-encoded).
+Place your AIBOM Ed25519 public key here as `aibom_public_key.pem`, in PEM format.
 
 Notes:
-- The key is optional unless AIBOM_REQUIRED=true.
-- The policy service will attempt verification if the file exists.
+- The key is optional unless `AIBOM_REQUIRED=true`.
+- The policy service tries to verify signatures whenever this file exists.

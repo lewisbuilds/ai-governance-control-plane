@@ -1,8 +1,8 @@
 # mcp-policy
 
-FastAPI REST service for YAML policy evaluation, risk scoring, optional AIBOM signature verification, and SLA timing.
+A FastAPI service that checks models against YAML policy rules. It also calculates a risk score, can verify an AIBOM signature, and measures how long each check takes.
 
-## Configuration
+## Settings
 
 - `POLICIES_DIR` defaults to `/app/policies`.
 - `AIBOM_PUBLIC_KEY_PATH` defaults to `/app/keys/aibom_public_key.pem`.
@@ -12,19 +12,25 @@ FastAPI REST service for YAML policy evaluation, risk scoring, optional AIBOM si
 ## Endpoints
 
 - `GET /healthz` returns `{"ok": true}`.
-- `POST /validate` evaluates a payload.
-- `POST /api/v1/policies/validate` is an alias for `/validate`.
-- `POST /api/v1/policies/register-model` and `GET /api/v1/policies/models` are in-memory demo endpoints.
+- `POST /validate` checks a payload.
+- `POST /api/v1/policies/validate` does the same thing as `/validate`.
+- `POST /api/v1/policies/register-model` and `GET /api/v1/policies/models` are demo endpoints that keep data in memory only.
 
-A policy request must include all configured risk factors as numbers from 0 through 5, plus the fields required by `policies/model-policy.yml`. Missing or invalid risk values deny the request. The response contains the decision, reasons, notes, computed risk score, SLA status, and elapsed time.
+## How a request is judged
 
-When AIBOM data is supplied, send `digest` and base64 `signature_b64`; Ed25519 verification covers the exact UTF-8 digest string. Only the public key is mounted in the service.
+A request must include every configured risk factor as a number from 0 to 5. It must also include the fields that `policies/model-policy.yml` requires. A missing or invalid risk value denies the request.
 
-## Local development
+The response contains the decision, the reasons, notes, the risk score, whether the check was within the SLA, and the time taken.
+
+## AIBOM signatures
+
+If you send AIBOM data, include a `digest` and a base64 `signature_b64`. The Ed25519 signature must cover the exact digest text. Only the public key is mounted in the service.
+
+## Run it locally
 
 ```powershell
 cd services/mcp-policy
 uvicorn policy_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The policy and key directories are mounted read-only in Compose.
+Compose mounts the policy and key folders as read only.

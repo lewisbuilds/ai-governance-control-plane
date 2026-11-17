@@ -1,30 +1,28 @@
 # AIBOM Verification and Key Management
 
-This project can optionally enforce verification of AI Bill of Materials (AIBOM) signatures for policy operations.
+An AIBOM is an AI bill of materials. This project can require a valid signature on an AIBOM before it accepts a policy request.
 
-## Enabling Verification
+## Turn verification on
 
-- Set environment variables (already wired in Compose):
+- Set these environment variables. Compose already wires them up.
   - `AIBOM_REQUIRED=true`
   - `AIBOM_PUBLIC_KEY_PATH=/app/keys/aibom_public_key.pem`
-- Provide an Ed25519 public key file at `infra/keys/aibom_public_key.pem` (or mount your path).
-- The `mcp-policy` service will reject operations that do not include a valid AIBOM signature when `AIBOM_REQUIRED=true`.
+- Provide an Ed25519 public key at `infra/keys/aibom_public_key.pem`, or mount a key from another path.
+- With `AIBOM_REQUIRED=true`, the `mcp-policy` service rejects any request that does not include a valid AIBOM signature.
 
-## Key Rotation Procedure
+## Rotate the key
 
-1. Generate a new Ed25519 key pair in a secure workstation or HSM:
-   - Public key (PEM) to distribute.
-   - Private key stays in your signer system/tooling.
-2. Publish the new public key into `infra/keys/aibom_public_key.pem` (or your secret store) and roll out the updated config.
-3. During a rotation window, you may support two keys by placing a multi-key file and updating the service to load both. After cutover, remove the old key.
-4. Record the rotation in your change log and update any CI pipelines that sign artifacts.
+1. Generate a new Ed25519 key pair on a secure workstation or in a hardware security module (HSM). Share the public key (PEM). Keep the private key inside your signing system.
+2. Put the new public key at `infra/keys/aibom_public_key.pem`, or in your secret store, and roll out the change.
+3. If you need a changeover period, you can support two keys. Use a file that holds both keys and update the service to load both. Remove the old key after the cutover.
+4. Write the rotation in your change log. Update any CI pipeline that signs artifacts.
 
-## CI Integration (optional)
+## Use it in CI (optional)
 
-If you sign AIBOMs/SBOMs during builds, add a CI step to verify signatures using the same public key path. Gate deployments when verification fails.
+If you sign AIBOMs or SBOMs during builds, add a CI step that checks the signature with the same public key. Block the deployment if the check fails.
 
-## Notes
+## Good habits
 
-- Keep keys out of source control unless they are public.
-- Ensure secure permissions on mounted key files in production.
-- All verification should use modern, constant‑time Ed25519 libraries.
+- Keep keys out of source control. The only exception is a public key.
+- Set strict permissions on key files in production.
+- Use a modern Ed25519 library that compares values in constant time.
