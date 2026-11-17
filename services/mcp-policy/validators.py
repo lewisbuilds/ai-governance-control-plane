@@ -141,6 +141,12 @@ def _matches(rule: dict[str, Any], payload: dict[str, Any], policy: dict[str, An
         return False
     actual = _dot_get(payload, field)
     expected = _resolve_value(rule, policy)
+    if (
+        str(rule.get("op", "eq")) in {"gt", "gte", "lt", "lte"}
+        and isinstance(expected, int | float)
+        and isinstance(actual, bool)
+    ):
+        return False
     try:
         return operation(actual, expected)
     except (TypeError, ValueError):
