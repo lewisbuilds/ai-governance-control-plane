@@ -30,7 +30,7 @@ python -m pytest -m "not integration"
 python -m pytest
 ```
 
-Pytest reports coverage for `services`, `scripts`, and `clients`. The minimum is 0 for now while coverage grows.
+Pytest reports coverage for `services`, `scripts`, and `clients`. Total coverage must stay at 85 percent or higher, or the run fails. Integration only runs should add `--cov-fail-under=0`.
 
 ## Code checks
 

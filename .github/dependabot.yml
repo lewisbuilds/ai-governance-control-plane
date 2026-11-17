@@ -10,3 +10,111 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+
+  # Python packages: one entry per requirements file.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    groups:
+      dev-tools:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "pip"
+    directory: "/services/mcp-audit"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    groups:
+      runtime:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "pip"
+    directory: "/services/mcp-gateway"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    groups:
+      runtime:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "pip"
+    directory: "/services/mcp-lineage"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    groups:
+      runtime:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "pip"
+    directory: "/services/mcp-policy"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    groups:
+      runtime:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Base images: one entry per Dockerfile folder.
+  - package-ecosystem: "docker"
+    directory: "/services/mcp-audit"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "docker"
+    directory: "/services/mcp-gateway"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "docker"
+    directory: "/services/mcp-lineage"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "docker"
+    directory: "/services/mcp-policy"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"

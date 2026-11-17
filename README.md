@@ -120,7 +120,7 @@ The integration tests need the Compose stack to be running:
 python -m pytest -m integration --cov-fail-under=0
 ```
 
-Test coverage is reported but not enforced yet, so it is not a quality gate.
+Unit tests must keep total coverage at 85 percent or higher. The integration tests need the stack and are run on their own, so they skip that check.
 
 Useful Docker commands:
 

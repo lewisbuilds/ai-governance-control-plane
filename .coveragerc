@@ -1,0 +1,4 @@
+[run]
+omit =
+    scripts/download-wheels.py
+    scripts/vulture_whitelist.py

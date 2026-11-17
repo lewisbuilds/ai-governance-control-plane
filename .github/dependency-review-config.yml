@@ -26,6 +26,10 @@ deny-licenses:
   - BUSL-1.1
   - Elastic-2.0
 
-# Optionally allow specific packages (by name@version) despite license
-# allow-dependencies-licenses:
-#   - pkg:npm/some-lib@1.2.3
+# Specific packages that are allowed despite the license deny list above.
+# psycopg is used as an unmodified library (not copied or changed), which the
+# LGPL permits. Review this entry if the project ever patches or vendors psycopg.
+allow-dependencies-licenses:
+  - pkg:pypi/psycopg
+  - pkg:pypi/psycopg-binary
+  - pkg:pypi/psycopg-pool
