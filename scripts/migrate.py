@@ -48,15 +48,13 @@ def sha256_file(path: Path) -> str:
 
 def ensure_schema_table(conn: psycopg.Connection) -> None:
     with conn.cursor() as cur:
-        cur.execute(
-            """
+        cur.execute("""
             create table if not exists schema_migrations (
               version text primary key,
               checksum text not null,
               applied_at timestamptz not null default now()
             )
-            """
-        )
+            """)
     conn.commit()
 
 

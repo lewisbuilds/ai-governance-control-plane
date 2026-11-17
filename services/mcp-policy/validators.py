@@ -1,6 +1,13 @@
-import json
+"""Policy and risk evaluation for the YAML driven governance gate."""
+
+from __future__ import annotations
+
+import base64
+import binascii
+import math
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,171 +29,178 @@ class GateResult:
     risk_score: float
     within_sla: bool
     elapsed_ms: int
+    notes: list[str]
 
 
 def _load_yaml(name: str) -> dict[str, Any]:
     path = os.path.join(POLICIES_DIR, name)
-    with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    with open(path, encoding="utf-8") as policy_file:
+        return yaml.safe_load(policy_file) or {}
 
 
 def _load_policies() -> tuple[dict[str, Any], dict[str, Any]]:
-    model_policy = _load_yaml("model-policy.yml")
-    risk_matrix = _load_yaml("risk-matrix.yml")
-    return model_policy, risk_matrix
+    return _load_yaml("model-policy.yml"), _load_yaml("risk-matrix.yml")
 
 
 def _verify_aibom(payload: dict[str, Any]) -> tuple[bool, str]:
-    """Optional AIBOM verification using Ed25519 public key.
-    Expected structure:
-    payload["aibom"] = {"data": <object>, "signature": <hex/base64>}
-    We canonicalize JSON for verification; signature is assumed hex-encoded.
-    """
+    """Verify an Ed25519 signature over the exact UTF-8 AIBOM digest string."""
     aibom = payload.get("aibom")
     if not aibom:
         return (
             not AIBOM_REQUIRED,
             "aibom_missing_allowed" if not AIBOM_REQUIRED else "aibom_missing_denied",
         )
+    if not isinstance(aibom, dict):
+        return False, "aibom_must_be_object"
+
+    digest = aibom.get("digest")
+    signature_b64 = aibom.get("signature_b64")
+    if not isinstance(digest, str) or not digest:
+        return False, "aibom_digest_missing"
+    if not isinstance(signature_b64, str):
+        return False, "aibom_signature_missing"
 
     try:
-        with open(AIBOM_PUBLIC_KEY_PATH, "rb") as f:
-            pub_bytes = f.read()
-        public_key = serialization.load_pem_public_key(pub_bytes)
+        with open(AIBOM_PUBLIC_KEY_PATH, "rb") as key_file:
+            public_key = serialization.load_pem_public_key(key_file.read())
         if not isinstance(public_key, Ed25519PublicKey):
             return False, "aibom_public_key_not_ed25519"
-
-        data_canonical = json.dumps(
-            aibom.get("data"), sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
-        sig_hex = aibom.get("signature")
-        if not isinstance(sig_hex, str):
-            return (False, "aibom_signature_missing")
-        try:
-            sig = bytes.fromhex(sig_hex)
-        except ValueError:
-            return (False, "aibom_signature_not_hex")
-        public_key.verify(sig, data_canonical)
-        return True, "aibom_verified"
+        signature = base64.b64decode(signature_b64, validate=True)
+        public_key.verify(signature, digest.encode("utf-8"))
     except FileNotFoundError:
-        # If required, deny; otherwise allow with note
-        return (not AIBOM_REQUIRED, "aibom_pubkey_not_found")
+        return False, "aibom_public_key_not_found"
+    except (ValueError, binascii.Error):
+        return False, "aibom_signature_not_base64"
     except InvalidSignature:
         return False, "aibom_signature_invalid"
-    except Exception as e:
-        return False, f"aibom_error:{e}"
+    except (OSError, TypeError) as exc:
+        return False, f"aibom_verification_error:{type(exc).__name__}"
+    return True, "aibom_verified"
 
 
 def _compute_risk(payload: dict[str, Any], risk_matrix: dict[str, Any]) -> tuple[float, list[str]]:
-    """Compute a simple risk score.
-    Supports two schemas:
-    1) risk-matrix with 'weights' and optional 'thresholds'. Expects payload['risk'] to contain numeric factors.
-    2) legacy 'class_base' / 'use_case_base' style maps.
-    """
-    reasons: list[str] = []
     score = 0.0
-
-    # Newer schema: weights * factors
-    weights = risk_matrix.get("weights")
-    if isinstance(weights, dict):
-        factors = payload.get("risk", {}) or {}
-        if isinstance(factors, dict):
-            for k, w in weights.items():
-                try:
-                    v = float(factors.get(k, 0))
-                    score += float(w) * v
-                    if v:
-                        reasons.append(f"risk:{k}*{w}={v*w}")
-                except Exception:
-                    continue
-            return score, reasons
-
-    # Legacy schema fallback
-    model_class = payload.get("model_class") or payload.get("model_type") or "unknown"
-    use_case = payload.get("use_case", "unknown")
-    region = payload.get("region", "global")
-
-    class_map = risk_matrix.get("class_base") or {}
-    use_map = risk_matrix.get("use_case_base") or {}
-    region_map = risk_matrix.get("region_modifiers") or {}
-
-    if model_class in class_map:
-        score += float(class_map[model_class])
-        reasons.append(f"class:{model_class}")
-    if use_case in use_map:
-        score += float(use_map[use_case])
-        reasons.append(f"use_case:{use_case}")
-    if region in region_map:
-        score += float(region_map[region])
-        reasons.append(f"region:{region}")
+    reasons: list[str] = []
+    weights = risk_matrix.get("weights", {})
+    factors = payload.get("risk", {})
+    if not isinstance(weights, dict) or not isinstance(factors, dict):
+        return score, reasons
+    for name, weight in weights.items():
+        raw_value = factors.get(name)
+        if isinstance(raw_value, bool) or not isinstance(raw_value, int | float):
+            reasons.append(f"invalid_risk_factor:{name}")
+            continue
+        value = float(raw_value)
+        try:
+            numeric_weight = float(weight)
+        except (TypeError, ValueError):
+            reasons.append(f"invalid_risk_weight:{name}")
+            continue
+        if not math.isfinite(value) or not math.isfinite(numeric_weight) or not 0 <= value <= 5:
+            reasons.append(f"invalid_risk_factor:{name}")
+            continue
+        contribution = numeric_weight * value
+        score += contribution
+        if value:
+            reasons.append(f"risk:{name}*{weight}={contribution}")
     return score, reasons
 
 
+def _dot_get(data: Any, path: str) -> Any:
+    value = data
+    for key in path.split("."):
+        if not isinstance(value, dict) or key not in value:
+            return None
+        value = value[key]
+    return value
+
+
+def _resolve_value(rule: dict[str, Any], policy: dict[str, Any]) -> Any:
+    if "value_from" in rule:
+        return _dot_get(policy, str(rule["value_from"]))
+    return rule.get("value")
+
+
+_OPS: dict[str, Callable[[Any, Any], bool]] = {
+    "eq": lambda actual, expected: actual == expected,
+    "ne": lambda actual, expected: actual != expected,
+    "gt": lambda actual, expected: actual is not None and actual > expected,
+    "gte": lambda actual, expected: actual is not None and actual >= expected,
+    "lt": lambda actual, expected: actual is not None and actual < expected,
+    "lte": lambda actual, expected: actual is not None and actual <= expected,
+    "in": lambda actual, expected: actual in expected,
+    "not_in": lambda actual, expected: actual not in expected,
+    "contains": lambda actual, expected: expected in actual,
+}
+
+
+def _matches(rule: dict[str, Any], payload: dict[str, Any], policy: dict[str, Any]) -> bool:
+    field = rule.get("field")
+    operation = _OPS.get(str(rule.get("op", "eq")))
+    if not isinstance(field, str) or operation is None:
+        return False
+    actual = _dot_get(payload, field)
+    expected = _resolve_value(rule, policy)
+    if (
+        str(rule.get("op", "eq")) in {"gt", "gte", "lt", "lte"}
+        and isinstance(expected, int | float)
+        and isinstance(actual, bool)
+    ):
+        return False
+    try:
+        return operation(actual, expected)
+    except (TypeError, ValueError):
+        return False
+
+
+def _condition_applies(
+    rule: dict[str, Any], payload: dict[str, Any], policy: dict[str, Any]
+) -> bool:
+    condition = rule.get("when")
+    return not isinstance(condition, dict) or _matches(condition, payload, policy)
+
+
 def evaluate(payload: dict[str, Any]) -> GateResult:
-    t0 = time.perf_counter_ns()
+    start = time.perf_counter_ns()
     policies, risk_matrix = _load_policies()
-
-    # 1) AIBOM verification (optional)
+    risk = payload.get("risk", {})
+    invalid_risk_type = not isinstance(risk, dict)
+    risk = {} if invalid_risk_type else risk
+    score, reasons = _compute_risk({**payload, "risk": risk}, risk_matrix)
+    if invalid_risk_type:
+        reasons.append("invalid_risk_factor:risk_must_be_object")
     aibom_ok, aibom_reason = _verify_aibom(payload)
+    reasons.append(aibom_reason)
 
-    reasons: list[str] = []
-    if not aibom_ok:
-        reasons.append(aibom_reason)
-    else:
-        if aibom_reason:
-            reasons.append(aibom_reason)
+    # The policy always evaluates the score computed from the configured risk factors.
+    evaluated_payload = {**payload, "risk": {**risk, "score": score}}
 
-    # 2) Risk computation
-    score, risk_reasons = _compute_risk(payload, risk_matrix)
-    reasons.extend(risk_reasons)
+    required_failures: list[str] = []
+    for rule in policies.get("require", []) or []:
+        if (
+            isinstance(rule, dict)
+            and _condition_applies(rule, evaluated_payload, policies)
+            and not _matches(rule, evaluated_payload, policies)
+        ):
+            required_failures.append(str(rule.get("field", "unknown")))
+    if required_failures:
+        reasons.extend(f"required_failed:{field}" for field in required_failures)
 
-    # 3) Threshold evaluation from model-policy.yml
-    # Expected keys: required/deny lists, max_risk
-    max_risk = float(policies.get("max_risk", 5.0))
+    denied: list[str] = []
+    for rule in policies.get("deny", []) or []:
+        if (
+            isinstance(rule, dict)
+            and _condition_applies(rule, evaluated_payload, policies)
+            and _matches(rule, evaluated_payload, policies)
+        ):
+            denied.append(str(rule.get("reason") or f"denied:{rule.get('field', 'unknown')}"))
+    reasons.extend(denied)
 
-    # Explicit deny rules (simple contains checks)
-    deny_rules = policies.get("deny", []) or []
-    for rule in deny_rules:
-        # rule example: { field: "use_case", equals: "ads-targeting" }
-        field = rule.get("field")
-        equals = rule.get("equals")
-        if field and equals is not None and str(payload.get(field)) == str(equals):
-            reasons.append(f"deny:{field}={equals}")
-            allowed = False
-            elapsed_ms = int((time.perf_counter_ns() - t0) / 1_000_000)
-            return GateResult(
-                allowed=allowed,
-                reasons=reasons,
-                risk_score=score,
-                within_sla=(elapsed_ms <= GATE_SLA_MS),
-                elapsed_ms=elapsed_ms,
-            )
-
-    # Required fields
-    req_fields = policies.get("required", []) or []
-    missing = [f for f in req_fields if payload.get(f) in (None, "")]
-    if missing:
-        reasons.append("missing:" + ",".join(missing))
-        allowed = False
-        elapsed_ms = int((time.perf_counter_ns() - t0) / 1_000_000)
-        return GateResult(
-            allowed=allowed,
-            reasons=reasons,
-            risk_score=score,
-            within_sla=(elapsed_ms <= GATE_SLA_MS),
-            elapsed_ms=elapsed_ms,
-        )
-
-    # Risk threshold
-    allowed = aibom_ok and (score <= max_risk)
-    if not allowed and score > max_risk:
-        reasons.append(f"risk_exceeds:{score}>{max_risk}")
-
-    elapsed_ms = int((time.perf_counter_ns() - t0) / 1_000_000)
-    return GateResult(
-        allowed=allowed,
-        reasons=reasons,
-        risk_score=score,
-        within_sla=(elapsed_ms <= GATE_SLA_MS),
-        elapsed_ms=elapsed_ms,
-    )
+    notes = [str(note) for note in policies.get("notes", []) or []]
+    has_invalid_risk = any(reason.startswith("invalid_risk_") for reason in reasons)
+    allowed = aibom_ok and not has_invalid_risk and not required_failures and not denied
+    elapsed_ms = int((time.perf_counter_ns() - start) / 1_000_000)
+    within_sla = elapsed_ms <= GATE_SLA_MS
+    if not within_sla:
+        reasons.append(f"warn:gate_sla_exceeded:{elapsed_ms}ms>{GATE_SLA_MS}ms")
+    return GateResult(allowed, reasons, score, within_sla, elapsed_ms, notes)

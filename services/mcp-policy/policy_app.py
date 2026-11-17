@@ -97,6 +97,7 @@ def validate(inp: ValidateIn):
     return {
         "allowed": res.allowed,
         "reasons": res.reasons,
+        "notes": res.notes,
         "risk_score": res.risk_score,
         "within_sla": res.within_sla,
         "elapsed_ms": res.elapsed_ms,

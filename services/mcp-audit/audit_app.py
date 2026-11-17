@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from audit_schema import AuditEvent, AuditIn
 from fastapi import FastAPI, HTTPException, Query, Response
-from psycopg import types as psycopg_types
+from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
 try:
@@ -91,6 +91,11 @@ def canonical_json(value) -> str:
 def log_event(evt: AuditIn):
     try:
         with pool.connection() as conn, conn.cursor() as cur:
+            # Serialize writers so concurrent requests cannot branch from one prior hash.
+            cur.execute(
+                "SELECT pg_advisory_xact_lock(0, hashtext(%s))",
+                ("ai-governance-control-plane.audit_log.chain",),
+            )
             cur.execute("SELECT entry_hash FROM audit_log ORDER BY id DESC LIMIT 1")
             row = cur.fetchone()
             prev_hash = row[0] if row else "GENESIS"
@@ -115,12 +120,14 @@ def log_event(evt: AuditIn):
                     evt.event_type,
                     evt.subject,
                     evt.decision,
-                    psycopg_types.json.Json(evt.details),
+                    Json(evt.details),
                     prev_hash,
                     entry_hash,
                 ),
             )
             r = cur.fetchone()
+            if r is None:
+                raise RuntimeError("audit_insert_returned_no_row")
             return {
                 "id": r[0],
                 "event_type": r[1],

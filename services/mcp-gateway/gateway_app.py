@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 RAW_DIRECTORY = os.environ.get("MCP_DIRECTORY", "{}")
@@ -31,13 +31,13 @@ ALLOWED_PATHS: dict[str, list[str]] = {
     "mcp-lineage": [
         r"^/healthz$",
         r"^/register$",
-        r"^/artifacts/.*$",
-        r"^/models/.*$",
+        r"^/lineage/[^/]+$",
     ],
     "mcp-audit": [
         r"^/healthz$",
         r"^/log$",
-        r"^/events.*$",
+        r"^/events$",
+        r"^/export$",
     ],
     "mcp-policy": [
         r"^/healthz$",
@@ -188,15 +188,12 @@ async def _proxy(service: str, path: str, req: Request):
             headers=headers,
             params=dict(req.query_params),
         )
-        # Return JSON if possible; do not forward upstream headers to avoid hop-by-hop/header conflicts
-        try:
-            data = resp.json()
-            return JSONResponse(content=data, status_code=resp.status_code)
-        except Exception:
-            return JSONResponse(
-                content={"status": resp.status_code, "body": resp.text},
-                status_code=resp.status_code,
-            )
+        # Preserve JSON, CSV, and error bodies while exposing only the content type.
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type=resp.headers.get("content-type"),
+        )
 
 
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])

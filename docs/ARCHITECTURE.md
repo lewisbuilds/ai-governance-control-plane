@@ -1,74 +1,49 @@
 # Architecture
 
-This system provides a lightweight, self-hosted governance layer for AI/ML workloads using Docker Compose and PostgreSQL.
+## System shape
 
-## System Overview
+The project runs four FastAPI REST services and PostgreSQL under Docker Compose. Only the gateway publishes a host port. Services communicate over the Compose network; lineage, audit, and policy services read configuration or data from PostgreSQL and mounted policy files.
 
-```
-┌─────────────────┐
-│  External User  │
-│ (Port 8080)     │
-└────────┬────────┘
-         │
-         ▼
-┌──────────────────────┐
-│   mcp-gateway        │  ← Single entry point
-│  (Reverse Proxy)     │     • Service directory
-│  (SSRF protections)  │     • Path allowlists
-└────────┬─────────────┘
-         │
-    ┌────┼────┐
-    │    │    │
-    ▼    ▼    ▼
- ┌──────┐ ┌──────────┐ ┌─────────┐
- │Policy│ │ Lineage  │ │  Audit  │
- └──────┘ └──────────┘ └─────────┘
-    │         │           │
-    └─────────┼───────────┘
-              │
-              ▼
-        ┌──────────────┐
-        │  PostgreSQL  │
-        │  (Append-only│
-        │   Hash chain)│
-        └──────────────┘
+```mermaid
+flowchart LR
+    Client -->|HTTP JSON :8080| Gateway
+    Gateway --> Lineage
+    Gateway --> Policy
+    Gateway --> Audit
+    Lineage --> Postgres
+    Audit --> Postgres
+    Policy -->|read-only YAML + optional public key| Config
 ```
 
-## Components
+The `mcp-*` names are historical service names. The current implementation does not speak the Model Context Protocol or use its SDK; the public interface is REST/JSON.
 
-- Postgres 16 (db)
-  - Schemas in `infra/init.sql` for `model_lineage` and `audit_log` with append-only constraints
-- mcp-lineage (FastAPI)
-  - Registers and fetches lineage records; uses psycopg3 + pool
-  - Endpoints: POST /register, GET /lineage/{model_id}, GET /healthz
-- mcp-audit (FastAPI)
-  - Append-only audit log with hash chaining; export JSON/CSV
-  - Endpoints: POST /log, GET /events, GET /export, GET /healthz
-- mcp-policy (FastAPI)
-  - Loads customer policy YAMLs; optional AIBOM (Ed25519 public key only); risk scoring with `policies/risk-matrix.yml`
-  - Endpoints: POST /validate, GET /healthz
-- mcp-gateway (FastAPI)
-  - Directory of internal services and a safe reverse proxy
-  - Endpoints: GET /mcp, generic proxy /{service}/{path}
+## Request flow
 
-## Security
+1. A client registers model ID, version, artifacts, owner, and metadata through `POST /mcp-lineage/register`.
+2. A client submits evaluation data to `POST /mcp-policy/validate`. The policy service loads the YAML files, computes a weighted score, optionally verifies an AIBOM signature, and returns an allow/deny decision with reasons and elapsed time.
+3. The caller records that decision at `POST /mcp-audit/log`. The audit service hashes the event with the preceding entry hash and persists the result.
+4. Reviewers can read events or export JSON/CSV through the gateway.
 
-- Containers run as a non-root user with `read_only: true`, tmpfs work dirs, `no-new-privileges`, and `cap_drop: [ALL]`
-- SSRF/Traversal protections in gateway: allow-list based (`MCP_DIRECTORY`), path sanitization, and scheme checks
-- Standard security headers set by middleware on all services (CSP, HSTS when https, X-Frame-Options, etc.)
-- No plaintext secrets in repo; env-driven configuration via `.env.example`
-- DB interactions use parameterized queries to avoid SQL injection
+The services are intentionally separate so a demo can show the boundary between registering evidence, evaluating rules, and recording decisions. The current stack does not coordinate those calls into an atomic workflow.
 
-## Data Flow
+## Service responsibilities
 
-1. Client POSTs lineage ⇒ `mcp-lineage` ⇒ Postgres
-2. Client POSTs policy input ⇒ `mcp-policy` ⇒ evaluates YAML rules + risk scoring ⇒ decision
-3. Client POSTs audit ⇒ `mcp-audit` ⇒ appends hash-chained event
-4. Optional integration via `mcp-gateway`: route `/mcp-lineage/*`, `/mcp-policy/*`, `/mcp-audit/*`
+| Component | Responsibility | State |
+| --- | --- | --- |
+| `mcp-gateway` | Directory, path allowlist, request forwarding, high-level demo endpoints | No durable state |
+| `mcp-lineage` | Append model version and artifact metadata; look up model history | PostgreSQL `model_lineage` |
+| `mcp-policy` | Load YAML, calculate weighted risk, apply require/deny checks, optional AIBOM verification | Read-only YAML and optional public key |
+| `mcp-audit` | Append decision events and return JSON/CSV exports | PostgreSQL `audit_log` |
+| `db` | Store lineage, audit events, and migration history | Named PostgreSQL volume |
 
-## Operations
+## Evidence model
 
-- Docker Compose orchestrates services; healthchecks expose readiness
-- Policies mounted read-only from `./policies`
-- AIBOM public key (optional) mounted from `./infra/keys`
-- Makefile targets: `up`, `down`, `logs`, `test`
+`model_lineage` stores a row per registration. `audit_log` stores the event, the prior event hash, and the new entry hash. A trigger blocks ordinary `UPDATE` and `DELETE` statements on audit rows. This detects broken links and discourages application-level edits; it does not protect against a privileged database operator who can alter the schema, disable triggers, or rewrite data.
+
+Policy evidence is reproducible only when the caller preserves the submitted payload, exact policy files, risk matrix, public-key identity, and service version with the returned result. This repository does not yet persist a policy-file digest alongside each decision.
+
+## Runtime and security boundaries
+
+Compose health checks verify process readiness and database availability where applicable. Application containers use read-only root filesystems, a non-root account, dropped capabilities, and temporary filesystems. PostgreSQL owns the persistent writable volume. The gateway restricts service names, paths, forwarded headers, redirects, and upstream timeouts.
+
+There is no built-in user authentication, authorization, tenant isolation, rate limiting, or TLS termination. The sample stack is for local evaluation on a trusted network, not direct public exposure.

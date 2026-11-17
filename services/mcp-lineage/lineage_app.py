@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from lineage_schema import LineageIn, LineageRecord
-from psycopg import types as psycopg_types
+from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
 try:
@@ -93,12 +93,14 @@ def register(lineage: LineageIn):
                 (
                     lineage.model_id,
                     lineage.version,
-                    psycopg_types.json.Json(lineage.artifacts),
+                    Json(lineage.artifacts),
                     lineage.created_by,
-                    psycopg_types.json.Json(lineage.metadata),
+                    Json(lineage.metadata),
                 ),
             )
             row = cur.fetchone()
+            if row is None:
+                raise RuntimeError("lineage_insert_returned_no_row")
             return {
                 "id": row[0],
                 "model_id": row[1],
