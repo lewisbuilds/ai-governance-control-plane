@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 import requests
 
@@ -152,3 +154,61 @@ def test_lineage_registration(gateway_url: str) -> None:
     assert "model_id" in data
     assert data.get("version") == "1.0.0"
     assert data.get("created_by") == "test-user"
+
+
+@pytest.mark.integration
+def test_lineage_lookup_is_available_through_gateway(gateway_url: str) -> None:
+    model_id = f"gateway-lookup-{int(__import__('time').time())}"
+    created = requests.post(
+        f"{gateway_url}/mcp-lineage/register",
+        json={"model_id": model_id, "version": "1.0.0", "created_by": "test-user"},
+        timeout=3.0,
+    )
+    assert created.status_code == 200
+
+    response = requests.get(f"{gateway_url}/mcp-lineage/lineage/{model_id}", timeout=3.0)
+    assert response.status_code == 200
+    assert any(record["model_id"] == model_id for record in response.json())
+
+
+@pytest.mark.integration
+def test_audit_json_and_csv_exports_pass_through_gateway(gateway_url: str) -> None:
+    subject = f"gateway-export-{int(__import__('time').time())}"
+    created = requests.post(
+        f"{gateway_url}/mcp-audit/log",
+        json={"event_type": "export_test", "subject": subject, "decision": True},
+        timeout=3.0,
+    )
+    assert created.status_code == 200
+
+    json_export = requests.get(f"{gateway_url}/mcp-audit/export?fmt=json", timeout=3.0)
+    assert json_export.status_code == 200
+    assert any(event["subject"] == subject for event in json_export.json())
+
+    csv_export = requests.get(f"{gateway_url}/mcp-audit/export?fmt=csv", timeout=3.0)
+    assert csv_export.status_code == 200
+    assert csv_export.headers["content-type"].startswith("text/csv")
+    assert subject in csv_export.text
+
+
+@pytest.mark.integration
+def test_concurrent_audit_writes_keep_one_hash_chain(gateway_url: str) -> None:
+    subjects = [f"concurrent-audit-{__import__('uuid').uuid4()}" for _ in range(12)]
+
+    def append_event(subject: str) -> requests.Response:
+        return requests.post(
+            f"{gateway_url}/mcp-audit/log",
+            json={"event_type": "concurrency_test", "subject": subject, "decision": True},
+            timeout=10.0,
+        )
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        responses = list(executor.map(append_event, subjects))
+    assert all(response.status_code == 200 for response in responses)
+
+    events = requests.get(f"{gateway_url}/mcp-audit/events?limit=1000", timeout=10.0).json()
+    ascending = list(reversed(events))
+    assert all(
+        current["prev_hash"] == previous["entry_hash"]
+        for previous, current in zip(ascending, ascending[1:], strict=False)
+    )

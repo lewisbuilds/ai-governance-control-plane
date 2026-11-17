@@ -53,7 +53,7 @@ jobs:
         run: |
           vulture . scripts/vulture_whitelist.py \
             --min-confidence 80 \
-            --exclude "wheelhouse,infra/keys,backups,__pycache__"
+            --exclude "wheelhouse,infra/keys,backups,__pycache__,.venv,test_venv"
 
   typecheck:
     name: mypy

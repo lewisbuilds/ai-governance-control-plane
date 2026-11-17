@@ -23,7 +23,7 @@
 thresholds:
   min_accuracy_general: 0.85
   min_accuracy_safety_critical: 0.95
-  max_risk_score: 60
+  max_risk_score: 40
 
 require:
   - field: flags.contains_forbidden_data
