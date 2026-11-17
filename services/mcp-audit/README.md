@@ -1,32 +1,38 @@
 # mcp-audit
 
-Append-only audit logging service with hash chaining.
+The audit log service. It only adds events. Each event is linked to the one before it with a hash.
 
-## Purpose
-- Accepts audit events and writes to `audit_log` with chained `prev_hash` → `entry_hash`
-- Prevents UPDATE/DELETE via triggers (append-only)
+## What it does
 
-## Environment
-- `DATABASE_URL` (required), e.g. `postgresql://mcp:mcppass@db:5432/mcpgov`
+- Accepts audit events and stores them in `audit_log`. Each row holds `prev_hash` and `entry_hash`.
+- Blocks `UPDATE` and `DELETE` with database triggers, so rows cannot be changed in normal use.
+
+## Settings
+
+- `DATABASE_URL` (required). Example: `postgresql://mcp:mcppass@db:5432/mcpgov`
 
 ## Endpoints
-- `GET /healthz` → `{ "ok": true }`
-- `POST /log` → `{ "event_type": "policy_decision", "subject": "resnet-50@1.0.0", "decision": true, "details": {} }`
-- `GET /events?limit=100&offset=0`
-- `GET /export?fmt=json|csv`
 
-## Run (dev)
+- `GET /healthz` returns `{ "ok": true }`.
+- `POST /log` adds an event. Example body: `{ "event_type": "policy_decision", "subject": "resnet-50@1.0.0", "decision": true, "details": {} }`
+- `GET /events?limit=100&offset=0` lists events.
+- `GET /export?fmt=json` or `fmt=csv` exports the log.
+
+## Run it locally
+
 ```powershell
 cd services/mcp-audit
 $env:DATABASE_URL = "postgresql://mcp:mcppass@localhost:5432/mcpgov"
 uvicorn audit_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## Observability & security
-- Echoes/propagates `X-Request-ID` via gateway
-- Structured JSON logs with request IDs
-- Security headers on all responses
+## Logging and security
+
+- Passes along the `X-Request-ID` that the gateway sends.
+- Writes structured JSON logs that include the request ID.
+- Adds security headers to every response.
 
 ## Troubleshooting
-- Ensure DB reachable via `DATABASE_URL`
-- If triggers fail, confirm schema applied (see `infra/init.sql` and migration runner)
+
+- Make sure the database can be reached through `DATABASE_URL`.
+- If the triggers fail, check that the schema was applied. See `infra/init.sql` and the migration runner.

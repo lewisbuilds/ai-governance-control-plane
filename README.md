@@ -1,29 +1,29 @@
 # AI Governance Control Plane
 
-A self-hosted FastAPI and PostgreSQL demo for model lineage, YAML policy decisions, and hash-chained audit events. Docker Compose runs the services without Kubernetes.
+A small demo you can run on your own machine. It tracks where AI models came from, checks them against policy rules, and keeps a tamper evident audit log of every decision. It uses FastAPI, PostgreSQL, and Docker Compose. No Kubernetes is needed.
 
-> **Protocol scope:** this version exposes REST/JSON APIs behind an `mcp-*` service directory. It does not implement the Model Context Protocol SDK or MCP transport. The `mcp` prefix is a service name, not a protocol claim.
+> **Note on the name:** the services are called `mcp-lineage`, `mcp-policy`, `mcp-audit`, and `mcp-gateway`. They use plain REST and JSON. They do not implement the Model Context Protocol. The `mcp` prefix is only a name.
 
-## What it demonstrates
+## What it does
 
-- Append-only model lineage records in PostgreSQL.
-- YAML policy rules with dotted field paths, conditional thresholds, and a weighted risk score.
-- Optional Ed25519 AIBOM verification using a public key.
-- Audit events linked by `prev_hash` and `entry_hash`, with JSON and CSV exports.
-- A small gateway with service and path allowlists, request IDs, and bounded upstream timeouts.
-- Read-only application containers and Compose health checks.
+- **Lineage:** records each model version and its artifacts. Records are only ever added, never changed.
+- **Policy:** checks a model against rules written in YAML and calculates a weighted risk score.
+- **AIBOM check:** can verify an Ed25519 signature using a public key. This is optional.
+- **Audit log:** every event stores the hash of the one before it, so edits can be detected. You can export the log as JSON or CSV.
+- **Gateway:** the only service exposed to your computer. It allows only known services and paths, adds request IDs, and limits how long it waits for other services.
+- **Safer containers:** application containers are read only and run as a normal user. Compose health checks confirm each service is ready.
 
 ## Quick start
 
-Requirements: Docker Engine with Compose v2. Copy the sample environment file, set a local database password, then build and start the stack:
+You need Docker with Compose v2.
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-# Edit .env and replace POSTGRES_PASSWORD and the matching password in DATABASE_URL.
+# Open .env and change POSTGRES_PASSWORD. Use the same password inside DATABASE_URL.
 docker compose up -d --build
 ```
 
-Wait for the gateway directory to respond:
+Wait until the gateway answers:
 
 ```powershell
 for ($i = 0; $i -lt 60; $i++) {
@@ -37,11 +37,11 @@ for ($i = 0; $i -lt 60; $i++) {
 docker compose ps
 ```
 
-The gateway publishes port `8080`. The database and service containers are not published to the host.
+Only the gateway is reachable from your computer, on port `8080`. The database and the other services stay inside Docker.
 
-## Try the APIs
+## Try it
 
-List the internal service directory and check health:
+Check that every service is healthy:
 
 ```powershell
 Invoke-RestMethod http://localhost:8080/mcp
@@ -50,7 +50,7 @@ Invoke-RestMethod http://localhost:8080/mcp-policy/healthz
 Invoke-RestMethod http://localhost:8080/mcp-audit/healthz
 ```
 
-Register a model lineage record:
+Register a model:
 
 ```powershell
 $lineage = Get-Content .\examples\register_model.json -Raw
@@ -59,7 +59,7 @@ Invoke-RestMethod -Method Post `
   -ContentType application/json -Body $lineage
 ```
 
-Evaluate the rules in `policies/model-policy.yml`. A passing example includes the fields the policy requires:
+Check a model against `policies/model-policy.yml`. This example includes every field the policy asks for, so it should be allowed:
 
 ```powershell
 $decision = @{
@@ -86,7 +86,7 @@ $result = Invoke-RestMethod -Method Post `
 $result | ConvertTo-Json -Depth 8
 ```
 
-Record the decision in the audit log and inspect the chain:
+Save the decision in the audit log, then read the log back:
 
 ```powershell
 $audit = @{
@@ -101,11 +101,11 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8080/mcp-audit/log `
 Invoke-RestMethod "http://localhost:8080/mcp-audit/export?fmt=json"
 ```
 
-For a complete walkthrough, see [examples/demo_notebook.md](examples/demo_notebook.md).
+For a longer walkthrough, see [examples/demo_notebook.md](examples/demo_notebook.md).
 
-## Development checks
+## Run the tests
 
-Use Python 3.11, create a virtual environment, and install the development requirements:
+Use Python 3.11. Create a virtual environment and install the tools:
 
 ```powershell
 py -3.11 -m venv .venv
@@ -114,33 +114,41 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -m "not integration"
 ```
 
-The suite reports coverage but enforces a zero-percent minimum, so coverage is not yet a quality gate. The integration tests require the Compose stack to be running:
+The integration tests need the Compose stack to be running:
 
 ```powershell
 python -m pytest -m integration --cov-fail-under=0
 ```
 
-Build and start just the project stack with `docker compose up -d --build`; inspect it with `docker compose ps` and `docker compose logs -f`. Stop containers with `docker compose down`. This keeps the named PostgreSQL volume; back it up before clearing or replacing local data.
+Test coverage is reported but not enforced yet, so it is not a quality gate.
 
-## Configuration and operations
+Useful Docker commands:
 
-- `policies/model-policy.yml` contains required checks, deny rules, conditional checks, and human-readable notes.
-- `policies/risk-matrix.yml` defines the score weights used by the policy evaluator. All four factors must be numeric values from 0 through 5; missing or invalid values deny the request.
-- `.env` supplies Compose values. `.env.example` is for local development only; replace its sample password before use.
-- AIBOM verification is optional by default. Set `AIBOM_REQUIRED=true` and mount an Ed25519 public PEM key at `AIBOM_PUBLIC_KEY_PATH`. The payload supplies `aibom.digest` and base64 `aibom.signature_b64`; the signature covers the exact UTF-8 digest string. The private key stays with the signing system.
-- Back up and test restoring PostgreSQL with `scripts/pg-backup.ps1` and `scripts/pg-restore.ps1`.
-- Apply SQL changes through `scripts/migrate.py`; migration files are checksummed after application.
-- Audit rows have update/delete triggers and hash links. A database administrator can change schema or data, so this is tamper-evident application evidence, not protection against a privileged database operator.
+- `docker compose ps` shows service status.
+- `docker compose logs -f` follows the logs.
+- `docker compose down` stops everything and keeps your database data. Back up the database before you delete the volume.
 
-## Security boundaries and known limitations
+## Configuration
 
-This is a runnable portfolio/demo foundation, not a production control service. It has no user authentication, authorization, rate limiting, tenant isolation, or TLS termination. Keep it on a trusted local network until those controls are added. The sample `.env` password is not suitable for a deployed environment. Review [SECURITY.md](SECURITY.md) before exposing any endpoint.
+- `policies/model-policy.yml` holds the required checks, deny rules, conditional checks, and notes.
+- `policies/risk-matrix.yml` holds the weights for the risk score. Each of the four risk factors must be a number from 0 to 5. A missing or invalid value denies the request.
+- `.env` holds the values Compose uses. `.env.example` is only for local use. Always change its sample password.
+- AIBOM checking is off by default. To turn it on, set `AIBOM_REQUIRED=true` and mount an Ed25519 public key at `AIBOM_PUBLIC_KEY_PATH`. The request supplies `aibom.digest` and a base64 `aibom.signature_b64`. The signature covers the exact digest text. The private key never enters this system.
+- `scripts/pg-backup.ps1` and `scripts/pg-restore.ps1` back up and restore PostgreSQL. Test a restore before you rely on it.
+- `scripts/migrate.py` applies database changes. It records a checksum for each migration after it runs.
 
-Other interview-relevant scope limits:
+## Limits you should know about
 
-- The service endpoints are REST/JSON, not MCP protocol endpoints.
-- The gateway allows only explicit service paths; add a gateway rule when adding an endpoint.
-- Policy decisions rely on caller-supplied evaluation metrics and lineage evidence; the service does not independently reproduce model training or metric calculation.
-- `GATE_SLA_MS` reports a warning when evaluation exceeds its budget; it does not cancel work or reject the decision.
+This is a demo and a learning project. It is not ready for production. It has no login, permissions, rate limiting, separation between customers, or TLS. Keep it on a trusted local network until those are added. The sample password in `.env.example` is not safe for a real deployment. Read [SECURITY.md](SECURITY.md) before you expose any endpoint.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/API.md](docs/API.md), and [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md) for the design, interfaces, and presentation notes.
+- Audit rows are protected by database triggers and hash links. Someone with full database access can still change the data or the schema. The log shows tampering. It does not prevent it.
+- Policy decisions trust the metrics and lineage evidence the caller sends. The service does not retrain a model or recalculate its metrics.
+- `GATE_SLA_MS` adds a warning when a check is slow. It does not stop the check or reject the result.
+- The gateway only forwards paths on its allowlist. When you add an endpoint, add it to the allowlist too.
+
+## More reading
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains how the pieces fit together.
+- [docs/API.md](docs/API.md) lists every endpoint.
+- [docs/README-Quickstart.md](docs/README-Quickstart.md) has extra setup help, such as proxy settings.
+- [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md) helps you present the project.

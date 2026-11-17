@@ -1,32 +1,37 @@
 # mcp-lineage
 
-Model lineage and registration service.
+The model registration service. It records where each model came from.
 
-## Purpose
-- Registers model lineage events and metadata
-- Retrieves lineage by `model_id`
+## What it does
 
-## Environment
-- `DATABASE_URL` (required), e.g. `postgresql://mcp:mcppass@db:5432/mcpgov`
+- Registers model versions with their artifacts and metadata.
+- Looks up the history of a model by `model_id`.
+
+## Settings
+
+- `DATABASE_URL` (required). Example: `postgresql://mcp:mcppass@db:5432/mcpgov`
 
 ## Endpoints
-- `GET /healthz` → `{ "ok": true }`
-- `POST /register` → register lineage
-  - Body: `{ "model_id": "resnet-50", "version": "1.0.0", "artifacts": [], "created_by": "me@example.com", "metadata": {} }`
-- `GET /lineage/{model_id}` → lineage records
 
-## Run (dev)
+- `GET /healthz` returns `{ "ok": true }`.
+- `POST /register` registers a model. Example body: `{ "model_id": "resnet-50", "version": "1.0.0", "artifacts": [], "created_by": "me@example.com", "metadata": {} }`
+- `GET /lineage/{model_id}` returns the records for that model.
+
+## Run it locally
+
 ```powershell
 cd services/mcp-lineage
 $env:DATABASE_URL = "postgresql://mcp:mcppass@localhost:5432/mcpgov"
 uvicorn lineage_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## Observability & security
-- Echoes/propagates `X-Request-ID` via gateway
-- Structured JSON logs with request IDs
-- Security headers on all responses
+## Logging and security
+
+- Passes along the `X-Request-ID` that the gateway sends.
+- Writes structured JSON logs that include the request ID.
+- Adds security headers to every response.
 
 ## Troubleshooting
-- Ensure DB reachable via `DATABASE_URL`
-- Check that baseline schema and migrations are applied
+
+- Make sure the database can be reached through `DATABASE_URL`.
+- Check that the baseline schema and the migrations were applied.

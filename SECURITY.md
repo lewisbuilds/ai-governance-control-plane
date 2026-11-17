@@ -1,131 +1,124 @@
-﻿# Security Policy
+# Security Policy
 
-## Reporting a Vulnerability
+## Report a vulnerability
 
-The AI Governance Control Plane team takes security vulnerabilities seriously. We appreciate your responsible disclosure and will work quickly to address any legitimate security concerns.
+We take security reports seriously and will respond quickly. Please report problems privately.
 
-### How to Report
+**Do not open a public GitHub issue for a security problem.** Use GitHub Security Advisories instead:
 
-**Please DO NOT open a public GitHub issue for security vulnerabilities.** Instead, report privately via GitHub's Security Advisory feature:
+1. Go to https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories
+2. Select **Report a vulnerability**.
+3. Fill in the details described below.
 
-1. Visit: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories
-2. Click **"Report a vulnerability"**
-3. Fill in the vulnerability details (see guidance below)
+If you prefer email, write to security@lewisbuilds.com and start the subject with [SECURITY].
 
-**Alternative:** If you prefer email, contact security@lewisbuilds.com with subject line starting with [SECURITY].
+### What to include
 
-### What to Include in Your Report
+- **Title:** a short, clear summary.
+- **Description:** what the problem is and why it matters.
+- **Affected versions:** which versions have the problem.
+- **Attack vector:** how someone could exploit it, such as over the network or locally, and whether they need to log in.
+- **Proof of concept:** steps, code, or an exploit. This is optional but helpful.
+- **Impact:** how severe it is (Critical, High, Medium, or Low) and what could happen.
+- **Suggested fix:** your idea for a fix. This is optional.
 
-To help us understand and address the issue quickly, please provide:
+Example:
 
-- **Title**: Clear, descriptive summary of the vulnerability
-- **Description**: Detailed explanation of the vulnerability and its impact
-- **Affected Version(s)**: Which version(s) of the project are vulnerable
-- **Attack Vector**: How an attacker could exploit this (e.g., network, local, requires authentication)
-- **Proof of Concept**: Steps to reproduce, code snippet, or working exploit (optional but helpful)
-- **Impact**: Severity assessment (Critical, High, Medium, Low) and potential consequences
-- **Suggested Fix**: Any proposed remediation (optional)
+```text
+Title: Path traversal in file upload handler
 
-**Example:**
-```
-Title: CVE-2025-XXXXX - Path Traversal in File Upload Handler
+Description: The upload endpoint does not clean user supplied file names. An attacker can write files outside the upload folder by using "../" in the name.
 
-Description: The file upload endpoint does not properly sanitize user-supplied filenames, allowing attackers to upload files outside the intended directory via path traversal sequences (e.g., "../").
+Affected versions: v0.2.0, v0.2.1
 
-Affected Versions: v0.2.0, v0.2.1
+Attack vector: Network. No login is needed.
 
-Attack Vector: Network - unauthenticated attacker can upload files with crafted filenames
+Proof of concept: [steps to reproduce]
 
-Proof of Concept: [steps to trigger the vulnerability]
+Impact: High. An attacker can overwrite important files or place malicious files on the server.
 
-Impact: HIGH - An attacker can overwrite critical files or place malicious files on the server.
-
-Suggested Fix: Validate and sanitize filenames to prevent path traversal; restrict uploads to a safe directory.
+Suggested fix: Clean the file name and keep uploads inside a safe folder.
 ```
 
-### Scope of Vulnerabilities
+### What is in scope
 
-We're interested in reports that demonstrate:
+- Bypassing login or permission checks
+- Injection attacks (SQL, command, YAML, and similar)
+- Weak or broken cryptography
+- Exposure of sensitive data such as credentials, personal data, or audit logs
+- Server side request forgery (SSRF)
+- Unsafe deserialization
+- Dependency problems with a demonstrated impact on this project
+- Broken access control or privilege escalation
+- Weak settings in the default deployment
 
-✅ **In scope:**
-- Authentication/authorization bypasses
-- Injection attacks (SQL, command, YAML, etc.)
-- Cryptographic failures or weak algorithms
-- Sensitive data exposure (credentials, PII, audit logs)
-- Server-side request forgery (SSRF)
-- Insecure deserialization
-- Dependency vulnerabilities with demonstrable impact
-- Improper access control or privilege escalation
-- Configuration weaknesses in default deployments
+### What is out of scope
 
-❌ **Out of scope:**
-- Social engineering or phishing attacks
-- Physical security issues
-- Vulnerabilities in dependencies without demonstrated project impact
-- Issues requiring extensive user misuse or misconfiguration
-- Missing security headers (unless critical to core functionality)
-- Unsubstantiated "could lead to" theoretical vulnerabilities
+- Social engineering or phishing
+- Physical security
+- Dependency problems with no demonstrated impact on this project
+- Problems that need major misuse or misconfiguration
+- Missing security headers, unless they are critical
+- Theoretical issues with no evidence
 
-### Response Process
+## What happens after you report
 
-1. **Acknowledgment (within 24 hours)**: We'll confirm receipt and provide a reference number
-2. **Investigation (3-7 days)**: We'll analyze the vulnerability and reproduce it
-3. **Assessment (ongoing)**: We'll determine severity and develop a fix
-4. **Patch Development (1-4 weeks)**: We'll create a security fix
-5. **Release (coordinated)**: We'll release a patched version
-6. **Public Disclosure**: We'll publish a security advisory and credit you (unless you prefer anonymity)
+1. **Within 24 hours:** we confirm we received your report and give you a reference number.
+2. **3 to 7 days:** we reproduce and investigate the problem.
+3. **Ongoing:** we decide how severe it is and work on a fix.
+4. **1 to 4 weeks:** we build the fix.
+5. **Release:** we ship a patched version.
+6. **Disclosure:** we publish an advisory and credit you, unless you prefer to stay anonymous.
 
-### Responsible Disclosure Timeline
+### Disclosure timeline
 
-- **Day 0**: Vulnerability reported to us
-- **Day 1**: Initial acknowledgment
-- **Day 7**: First status update
-- **Day 30**: Target patch release date (or update on blockers)
-- **Day 90**: Public disclosure (if patch not released by then)
+- **Day 0:** you report the problem.
+- **Day 1:** we acknowledge it.
+- **Day 7:** we send a first status update.
+- **Day 30:** target date for the patch, or an update on what is blocking it.
+- **Day 90:** public disclosure, even if the patch is not ready.
 
-We ask that you:
-- Do **not** disclose the vulnerability publicly before we've released a patch
-- Do **not** test the vulnerability on systems you don't own or have permission to test
-- Do **not** access, modify, or exfiltrate data beyond what's needed to demonstrate the vulnerability
-- **Allow us reasonable time** to develop and release a fix
+Please:
 
-### Security Updates
+- Do not share the problem publicly before we release a patch.
+- Do not test on systems you do not own or have permission to test.
+- Do not read, change, or copy data beyond what you need to show the problem.
+- Give us a reasonable amount of time to fix it.
 
-- **Subscribe to releases**: Watch this repository to be notified of security patches
-- **Check regularly**: Review the [Releases](https://github.com/lewisbuilds/ai-governance-control-plane/releases) page for security advisories
-- **Patch promptly**: Apply security updates as soon as possible after release
+## Stay up to date
 
-### Security Best Practices for Deployment
+- Watch this repository to hear about security patches.
+- Check the [Releases](https://github.com/lewisbuilds/ai-governance-control-plane/releases) page for advisories.
+- Apply security updates as soon as you can.
 
-When deploying this project in production:
+## Before you deploy
 
-1. **Keep dependencies updated**: Regularly run pip-audit or safety check to scan for known vulnerabilities
-2. **Use strong credentials**: Set complex passwords for database and service accounts
-3. **Enable AIBOM verification**: Use Ed25519 key verification for model artifact signing (see docs/SECURITY-AIBOM.md)
-4. **Implement network policies**: Restrict service-to-service communication (see infra/k8s/network-policies/)
-5. **Run as non-root**: Ensure containers run with minimal privileges
-6. **Enable audit logging**: Ensure audit events are persisted and monitored
-7. **Use HTTPS**: Terminate TLS at the gateway in production
-8. **Limit exposure**: Restrict API access to trusted networks
-9. **Monitor logs**: Set up centralized logging and alerting for security events
-10. **Regular backups**: Test backup and restore procedures regularly
+This project is a demo. If you adapt it for real use, do these things first:
 
-### Known Security Considerations
+1. **Update dependencies.** Run `pip-audit` regularly to find known vulnerabilities.
+2. **Use strong passwords** for the database and any service accounts.
+3. **Turn on AIBOM verification** with an Ed25519 key to check model signatures. See [docs/SECURITY-AIBOM.md](docs/SECURITY-AIBOM.md).
+4. **Add network policies** to limit which services can talk to each other. See `infra/k8s/network-policies/`.
+5. **Run containers as a normal user** with the fewest privileges possible.
+6. **Keep audit logs** and monitor them.
+7. **Use HTTPS.** Terminate TLS at the gateway.
+8. **Limit access** to trusted networks.
+9. **Collect logs centrally** and set up alerts for security events.
+10. **Back up the database** and test restores regularly.
 
-- **Append-only design**: Audit logs and lineage are immutable by design; deletion requires database-level access
-- **Policy YAML evaluation**: Policies are evaluated using yaml.safe_load; untrusted policy files should be validated before deployment
-- **Multi-tenant**: This version is not designed for multi-tenant deployments; use network isolation if required
-- **Rate limiting**: No built-in rate limiting; deploy behind a reverse proxy (nginx, HAProxy) with rate limiting
+## Known limits
 
-### Contact
+- **Append only data:** audit and lineage records are not meant to change. Deleting one needs direct database access.
+- **Policy files:** policies are loaded with `yaml.safe_load`. Review any policy file from an untrusted source before you use it.
+- **One customer only:** this version does not separate multiple customers. Use network isolation if you need that.
+- **No rate limiting:** put the gateway behind a reverse proxy such as nginx or HAProxy that limits request rates.
 
-To report a vulnerability or ask security questions:
-- **GitHub Security Advisory**: https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories
+## Contact
 
-### Acknowledgments
+Report vulnerabilities or ask security questions through [GitHub Security Advisories](https://github.com/lewisbuilds/ai-governance-control-plane/security/advisories).
 
-We deeply appreciate the security researchers who help us keep this project safe. With your permission, we'll acknowledge your contribution in release notes and our security advisory.
+## Thanks
 
----
+We are grateful to the researchers who help keep this project safe. With your permission, we will credit you in the release notes and the advisory.
 
-**Last Updated**: November 2025
+**Last updated:** November 2026

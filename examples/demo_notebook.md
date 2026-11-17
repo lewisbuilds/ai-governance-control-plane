@@ -1,27 +1,28 @@
-# AI Governance Control Plane - Demo walkthrough
+# Demo Walkthrough
 
-This walkthrough shows the basic end-to-end flow using `curl` and the minimal Python client.
+This walkthrough shows the full flow with `curl` and the small Python client.
 
-## Prerequisites
+## Before you start
 
-- Docker Engine + Docker Compose v2
-- Optional: Python 3.11 to run the simple client
+- Docker Engine with Docker Compose v2
+- `jq` to format the output
+- Optional: Python 3.11 to run the client
 
 ## Start the stack
 
 ```bash
 docker compose up -d --build
-# wait for gateway
+# Wait for the gateway
 for i in {1..60}; do curl -sf http://localhost:8080/mcp && break; sleep 2; done
 ```
 
-## List available services
+## List the services
 
 ```bash
 curl -s http://localhost:8080/mcp | jq
 ```
 
-## Register model lineage
+## Register a model
 
 ```bash
 curl -s -X POST \
@@ -30,22 +31,27 @@ curl -s -X POST \
   http://localhost:8080/mcp-lineage/register | jq
 ```
 
-## Run a policy validation
+## Check the policy
+
+This model has every field the policy requires, so it is allowed.
 
 ```bash
 cat > /tmp/policy-input.json <<'JSON'
 {
   "payload": {
-    "model_class": "vision",
-    "use_case": "general",
-    "region": "global",
+    "flags": {"contains_forbidden_data": false},
+    "context": {"safety_critical": true},
+    "metrics": {"accuracy": 0.97},
     "risk": {
       "data_sensitivity": 1,
-      "model_complexity": 2,
+      "model_complexity": 1,
       "deployment_impact": 1,
       "monitoring_maturity": 3
     },
-    "claims": {"human_in_loop": true}
+    "evidence": {
+      "shap_report_path": "reports/demo-shap.json",
+      "lineage_hashes": ["sha256:example"]
+    }
   }
 }
 JSON
@@ -55,6 +61,8 @@ curl -s -X POST \
   --data @/tmp/policy-input.json \
   http://localhost:8080/mcp-policy/validate | jq
 ```
+
+To see a denial, change `contains_forbidden_data` to `true` and send it again.
 
 ## Log an audit event
 
@@ -74,7 +82,7 @@ curl -s -X POST \
   http://localhost:8080/mcp-audit/log | jq
 ```
 
-## Python minimal client
+## Use the Python client
 
 ```python
 from clients.python.governance_client import GovernanceClient
@@ -83,11 +91,12 @@ c = GovernanceClient()
 print(c.get_services())
 
 payload = {
-    "model_class": "vision",
-    "use_case": "general",
+    "flags": {"contains_forbidden_data": False},
+    "context": {"safety_critical": True},
+    "metrics": {"accuracy": 0.97},
     "risk": {
         "data_sensitivity": 1,
-        "model_complexity": 2,
+        "model_complexity": 1,
         "deployment_impact": 1,
         "monitoring_maturity": 3,
     },
