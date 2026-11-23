@@ -2,7 +2,7 @@ pytest==9.2.0
 pytest-cov==7.1.0
 requests==2.34.2
 PyYAML==6.0.3
-ruff==0.17.5
+ruff==0.17.6
 mypy==2.4.1
 types-requests==2.33.0.20261030
 cryptography==50.0.2
@@ -13,8 +13,8 @@ vulture==2.16
 pylint==4.1.4
 
 # Runtime packages the services import, needed by the unit tests
-fastapi==0.163.2
+fastapi==0.165.0
 httpx==0.28.1
-pydantic==2.14.3
+pydantic==2.14.4
 psycopg[binary]==3.3.9
 psycopg_pool==3.3.3
